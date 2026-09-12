@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.ipynb_checkpoints/
+
+# Data
+pipeline/data/raw/*
+pipeline/data/processed/*
+!pipeline/data/raw/.gitkeep
+!pipeline/data/processed/.gitkeep
+
+# Node
+node_modules/
+.next/
+
+# Java
+target/
+.gradle/
+build/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.*
