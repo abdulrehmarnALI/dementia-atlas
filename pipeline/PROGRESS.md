@@ -28,11 +28,14 @@ No dates — WORKLOG.md has those. Tick things off here as they land._
 - [x] Exact bounds on every value (`value_num_lower` / `value_num_upper`) and a `minimum` state for computed totals over suppressed cells; one summing rule shared by derived rows and aggregates — `src/derived_rows.py`
 - [x] Hierarchy aggregation (Sub-ICB → ICB → Region → England) filling only the levels the publisher didn't publish, validated against Era A — `src/aggregation.py`
 - [x] Series-breaks table: organisation breaks (2026-04 reorg, Frimley split, UTLA expansion) and measure breaks (definition, suppression, discontinued, introduced) — `src/series_breaks.py`
+- [x] Gold tables built from silver: organisation, measure, period, observation, diagnosis_rate, series_break, geometry — `src/gold.py`, `data/processed/gold/`
+- [x] PostGIS schema and loader (COPY + dissolved ICB / region outlines) and a local docker-compose — `db/schema.sql`, `src/load_postgis.py`, `infra/docker-compose.yml`
 
 ## Next
 
-- [ ] Silver milestone review — check the five Parquet files are the shape the app wants
+- [ ] Run the PostGIS load for real against the local container and fix what it turns up
+- [ ] Local-authority (LTLA / UTLA) boundaries into `geometry`
+- [ ] Web app scaffold: one map page over `gold.diagnosis_rate` + `gold.geometry`
 - [ ] Export the QA notebook's numbered findings into `docs/findings.md`
 - [ ] Build writes a short QA summary (`build_summary.md`) next to the Parquet
 - [ ] Back-fill April and May 2026 once those publications are sourced
-- [ ] Gold: app-ready tables into PostGIS — not before all of the above

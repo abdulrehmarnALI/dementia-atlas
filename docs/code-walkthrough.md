@@ -30,6 +30,12 @@ silver_loader.build_silver()                all releases → one frame; revision
         │
         ▼
 build.py                                    writes five Parquet files to data/processed/silver/
+        │
+        ▼
+gold.py                                     reshapes silver into seven app tables → data/processed/gold/
+        │
+        ▼
+load_postgis.py                             db/schema.sql + COPY into PostGIS; dissolves ICB/region outlines
 ```
 
 Two modules predate all of this and aren't part of the build: `data_sources.py` and `ingest.py` are
@@ -310,6 +316,34 @@ A measure can have more than one break (MCI: introduced 2024-06 *and* suppressio
 2026-04), so the uniqueness key includes `kind`.
 
 ---
+
+## `gold.py` — silver reshaped for the app
+
+**What it does.** Reads the five silver Parquet files and produces seven app-shaped tables, with
+no new facts computed: `organisation` (one row per org, with name, parent, first/last period,
+series-break period), `measure` (one row per measure/breakdown/dimension combination with a stable
+string `measure_key` and a dictionary description), `period`, `observation` (the fact table —
+silver's latest-release-wins frame with a `measure_key`), `diagnosis_rate` (the five headline
+measures pivoted wide), `series_break` (copied through) and `geometry` (Sub-ICB polygons as GeoJSON
+text). `python -m src.gold` writes them to `data/processed/gold/`.
+
+**Things to know.**
+
+- `organisation_names()` re-reads the raw `NAME` columns because silver dropped them on purpose.
+  Latest release wins; names are title-cased with `ICB` / `NHS` restored.
+- Parents come from the latest hierarchy snapshot: Sub-ICB → ICB → NHS region → England, practice
+  → Sub-ICB. Local-authority tiers have no parent in the data except GOR → England.
+- `dictionary_descriptions()` reads the Era-B data dictionary and corrects its two naming slips
+  (`REVIEW` → `REVIEWS`, `PAT_LIST_65_PLUS` as a measure name).
+- The GeoJSON's `SICBL26CD` is an ONS code; the join to `org_code` goes through
+  `organisation.ons_code`.
+
+## `load_postgis.py` — gold into PostGIS
+
+Applies `db/schema.sql` (drop-and-recreate the `gold` schema), `COPY`s each table in foreign-key
+order, converts the GeoJSON text to PostGIS geometry, then **dissolves ICB and NHS-region
+outlines from the Sub-ICB polygons** with `ST_Union`, grouped by the current parent in
+`gold.organisation`. Needs `DATABASE_URL`; `infra/docker-compose.yml` gives you a local PostGIS.
 
 ## `build.py` — the command
 

@@ -133,3 +133,15 @@ is a skimmable log, not a transcript._
 - Build now writes five Parquet files. 98 tests pass. Context.md carries the bounds, aggregates
   and breaks-table decisions. Committed, not pushed.
 - Next: Sunshine's silver milestone review (NOW.md item 1).
+
+### 2026-09-16 (late) - Gold phase started
+
+- db/, api/, infra/, web/ were all empty, so gold is greenfield. Built src/gold.py: seven
+  app-shaped tables from the silver Parquet (organisation with names re-read from raw NAME
+  columns, measure with string measure_key + dictionary descriptions, period, observation =
+  latest-wins silver, diagnosis_rate wide, series_break, geometry from the April 2026 Sub-ICB
+  GeoJSON joined 106/106 via ONS code). db/schema.sql (PostGIS DDL), src/load_postgis.py (COPY,
+  ST_GeomFromGeoJSON, ICB/region outlines dissolved with ST_Union), infra/docker-compose.yml.
+- 7 gold tests pass; the PostGIS round-trip test is gated on DATABASE_URL and skipped because the
+  Docker daemon wasn't running. psycopg pinned.
+- Committed, not pushed. Next: the real PostGIS load (NOW.md item 1).

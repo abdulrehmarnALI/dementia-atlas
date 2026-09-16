@@ -139,6 +139,32 @@ Then, and only then, gold and the app build.
   `docs/aggregation_error_era_a.md`, and it does *not* track suppression rate (the suppression-
   free files are just as inexact), so the rule should key on count size, not suppression.
 
+## Gold (started 2026-09-16)
+
+Gold is a reshaping of silver into what the app queries, nothing more — no new facts are
+computed in gold. `pipeline/src/gold.py` builds seven tables from the silver Parquet and writes
+them to `data/processed/gold/`; `pipeline/src/load_postgis.py` applies `db/schema.sql` and COPYs
+them into a `gold` schema in PostGIS; `infra/docker-compose.yml` runs PostGIS locally.
+
+- **`observation` is the fact table and is exactly silver's latest-release-wins frame**, keyed on
+  `(period_end, org_level, org_code, measure_key)`, with `value` / `value_state` / bounds,
+  `is_derived`, `dq_flag`, `comparability`. Computed aggregates and `minimum` rows are in it,
+  distinguishable by `is_derived` and `value_state` — the app decides how to present them, gold
+  doesn't hide them.
+- **`measure_key` is a string**, `MEASURE:BREAKDOWN[:dim=value…]` — readable in a URL, stable
+  across builds, no surrogate ids to keep in sync.
+- **`diagnosis_rate` is the one wide table**, because the headline map needs register / estimate /
+  rate / CI side by side per organisation-period and that's a fixed set of five measures.
+  Everything else stays long.
+- **Names come back in gold** (from the raw NAME columns, latest release wins, title-cased), for
+  display only. Silver still has none.
+- **Geometry**: the April 2026 Sub-ICB boundaries (EPSG:4326) are the only boundary set held.
+  They join to `org_code` via ONS code (106/106). ICB and NHS-region outlines are *dissolved from
+  Sub-ICBs in PostGIS at load time* using the current hierarchy — so they are post-reorganisation
+  outlines and must not be drawn under Era-A ICB data. No local-authority boundaries yet.
+- **Tests build gold from the silver Parquet on disk**; the PostGIS round-trip test runs only when
+  `DATABASE_URL` is set.
+
 ## Known open questions
 
 Carried from findings §10 — these are genuinely unresolved, not homework someone forgot to do:
