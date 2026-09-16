@@ -26,6 +26,7 @@ psutil==7.2.2
 ptyprocess==0.7.0
 pure_eval==0.2.4
 Pygments==2.21.0
+psycopg[binary]==3.3.5
 pyarrow==25.0.1
 pytest==9.1.1
 python-dateutil==2.9.0.post0
