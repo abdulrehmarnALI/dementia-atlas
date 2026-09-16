@@ -18,6 +18,7 @@ from src.silver_loader import (  # noqa: E402
     LOADED_FAMILIES,
     OBSERVATION_KEY,
     build_silver,
+    check_dictionary_version,
     classify_file,
     find_revisions,
     load_file,
@@ -165,6 +166,31 @@ def test_a_revision_is_detected():
     tampered.loc[idx, "value_raw"] = "999999"
     revs = find_revisions(pd.concat([a, tampered]))
     assert len(revs) == 2 and set(revs["source_release"]) == {"2025-05", "2026-03"}
+
+
+# --------------------------------------------------------------------------------------
+# Guards
+# --------------------------------------------------------------------------------------
+
+def test_latest_release_refuses_a_release_name_that_would_not_sort_chronologically(silver):
+    bad = silver.head(10).copy()
+    bad["source_release"] = "June 2026"
+    with pytest.raises(ValueError, match="YYYY-MM"):
+        resolve_latest_release(bad)
+
+
+def test_dictionary_on_disk_is_checked_against_the_computed_version(tmp_path, recwarn):
+    (tmp_path / "PCDD-2627-data-dictionary.xlsx").touch()
+    check_dictionary_version(tmp_path, "2026-06")     # matches: silent
+    assert not recwarn.list
+    with pytest.warns(UserWarning, match="dictionary on disk"):
+        check_dictionary_version(tmp_path, "2026-03")  # would compute PCDD-2526
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    check_dictionary_version(empty, "2026-03")         # nothing to compare: silent
+    for release in RELEASES:                           # the real folders all agree
+        check_dictionary_version(RAW / release, release)
+    assert len(recwarn.list) == 1
 
 
 # --------------------------------------------------------------------------------------

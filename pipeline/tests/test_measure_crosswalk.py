@@ -102,6 +102,13 @@ def test_every_era_a_measure_string_decodes(era_a):
             decode_era_a_measure(fam, measure)   # raises on anything unknown
 
 
+def test_measure_key_dimensions_are_the_silver_dimension_columns():
+    from dataclasses import fields
+    from src.silver_schema import DIMENSION_COLUMNS, SILVER_COLUMNS
+    assert tuple(f.name for f in fields(MeasureKey)) == ("measure", "breakdown", *DIMENSION_COLUMNS)
+    assert [c for c in SILVER_COLUMNS if c in DIMENSION_COLUMNS] == list(DIMENSION_COLUMNS)
+
+
 def test_unknown_measure_or_family_raises():
     with pytest.raises(ValueError):
         decode_era_a_measure("sicbl_age_sex", "WHITE")

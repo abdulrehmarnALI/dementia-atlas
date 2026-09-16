@@ -22,7 +22,9 @@ Deliberately NOT covered here:
 """
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
+
+from .silver_schema import DIMENSION_COLUMNS
 
 # --------------------------------------------------------------------------------------
 # Controlled vocabulary - Era B's own tokens, adopted as the silver vocabulary
@@ -38,6 +40,10 @@ AGE_BANDS: tuple[str, ...] = (
 # Age groupings published as totals rather than bands: Era-A 65+ register totals, and
 # the Era-B practice file's ``<measure>_0_64`` / ``<measure>_65_PLUS`` breakdowns.
 AGE_TOTALS: tuple[str, ...] = ("0_64", "65_PLUS")
+AGE_65_PLUS = "65_PLUS"
+
+# Every value the silver ``age`` column may take, other than ALL.
+AGE_TOKENS = frozenset(AGE_BANDS) | frozenset(AGE_TOTALS)
 
 GENDERS: tuple[str, ...] = ("Female", "Male")
 
@@ -95,6 +101,10 @@ class MeasureKey:
     ethnicity: str = ALL
     dementia_type: str = ALL
     residential_type: str = ALL
+
+
+# MeasureKey's dimension fields must be exactly the silver dimension columns, in order.
+assert tuple(f.name for f in fields(MeasureKey))[2:] == DIMENSION_COLUMNS
 
 
 # --------------------------------------------------------------------------------------
@@ -184,7 +194,7 @@ def decode_era_a_measure(family: str, measure: str) -> MeasureKey:
         if measure in _PLAIN_MEASURES:
             return MeasureKey(measure, NOT_APPLICABLE)
         if measure == "DEMENTIA_REGISTER_65_PLUS":
-            return MeasureKey("DEMENTIA_REGISTER", NOT_APPLICABLE, age="65_PLUS")
+            return MeasureKey("DEMENTIA_REGISTER", NOT_APPLICABLE, age=AGE_65_PLUS)
 
     raise ValueError(f"Unknown Era-A Measure {measure!r} in family {family!r}")
 

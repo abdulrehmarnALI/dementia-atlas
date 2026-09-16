@@ -1,4 +1,10 @@
-"""Metadata for extrernal datasets used by the pipeline."""
+"""Metadata for external datasets held in S3.
+
+NOT part of the silver build. This and ``ingest.py`` are the original S3 download
+stubs from before the raw releases were kept locally under ``data/raw/pcdd/``;
+nothing in ``src/`` imports them. Kept for when the raw files are fetched from the
+bucket rather than copied by hand.
+"""
 
 DATA_SOURCES = {
     "nhs_primary_care_dementia": {

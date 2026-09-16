@@ -12,10 +12,8 @@ itself suppressed (context.md, done-criterion 7), never a silently smaller numbe
 
 import pandas as pd
 
+from .measure_crosswalk import ALL, BREAKDOWN_AGE_GENDER as AGE_GENDER
 from .silver_schema import BLANK, NUMERIC, SILVER_COLUMNS, SUPPRESSED
-
-ALL = "ALL"
-AGE_GENDER = "AGE_GENDER"
 
 # Columns that vary between the members of a derived group, or describe the value.
 _NON_GROUPING = {"gender", "value_raw", "value_num", "value_state", "dq_flag", "is_derived",

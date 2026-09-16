@@ -17,12 +17,14 @@ a dimension table, loaded by ``mapping_loader``.
 """
 
 import re
+import warnings
 from pathlib import Path
 
 import pandas as pd
 
 from .derived_rows import derive_all_sex_rows, drop_published_all_sex_rows
 from .measure_crosswalk import (
+    AGE_TOKENS,
     ALL,
     NOT_APPLICABLE,
     cross_era_comparability,
@@ -32,6 +34,7 @@ from .measure_crosswalk import (
 )
 from .org_crosswalk import canonical_ltla_ons_code, normalise_ons_code, to_org_level
 from .silver_schema import (
+    DIMENSION_COLUMNS,
     SILVER_COLUMNS,
     SILVER_KEY,
     classify_values,
@@ -42,7 +45,7 @@ from .silver_schema import (
     publication_era,
 )
 
-DIMENSIONS = ("age", "gender", "ethnicity", "dementia_type", "residential_type")
+_RELEASE_NAME = re.compile(r"^\d{4}-\d{2}$")
 
 # --------------------------------------------------------------------------------------
 # File classification
@@ -95,13 +98,8 @@ def _decode_measures(family: str, measures: pd.Series) -> pd.DataFrame:
     keys = {m: decode_era_a_measure(family, m) for m in measures.unique()}
     decoded = measures.map(keys)
     return pd.DataFrame({
-        "measure": decoded.map(lambda k: k.measure),
-        "breakdown": decoded.map(lambda k: k.breakdown),
-        "age": decoded.map(lambda k: k.age),
-        "gender": decoded.map(lambda k: k.gender),
-        "ethnicity": decoded.map(lambda k: k.ethnicity),
-        "dementia_type": decoded.map(lambda k: k.dementia_type),
-        "residential_type": decoded.map(lambda k: k.residential_type),
+        field: decoded.map(lambda key, field=field: getattr(key, field))
+        for field in ("measure", "breakdown", *DIMENSION_COLUMNS)
     }, index=measures.index)
 
 
@@ -173,6 +171,9 @@ def _shape_era_b_sub_icb(raw: pd.DataFrame, family: str) -> pd.DataFrame:
 
 def _shape_era_b_practice(raw: pd.DataFrame, family: str) -> pd.DataFrame:
     age = raw["BREAKDOWN"].str.extract(_PRACTICE_AGE_BREAKDOWN)["age"].fillna(ALL)
+    unknown = set(age.unique()) - AGE_TOKENS - {ALL}
+    if unknown:
+        raise ValueError(f"Practice breakdown names decode to unknown age tokens {sorted(unknown)}")
     return pd.DataFrame({
         "period_end": raw["ACH_DATE"],
         "org_level": raw["ORG_TYPE"].map(to_org_level),
@@ -224,7 +225,7 @@ def load_file(path: Path, release: str, ingested_at: pd.Timestamp | None = None)
         "dictionary_version": dictionary_version(release),
         "ingested_at": ingested_at or pd.Timestamp.now(),
         "period_end": parse_period_end(shaped["period_end"]),
-        **{col: shaped[col] for col in ("org_level", "org_code", "ons_code", "measure", "breakdown", *DIMENSIONS)},
+        **{col: shaped[col] for col in ("org_level", "org_code", "ons_code", "measure", "breakdown", *DIMENSION_COLUMNS)},
         "value_raw": shaped["value_raw"],
         "value_num": values["value_num"],
         "value_state": values["value_state"],
@@ -240,11 +241,32 @@ def release_files(release_dir: Path) -> list[Path]:
     return sorted(p for p in release_dir.glob("*.csv") if classify_file(p.name) in LOADED_FAMILIES)
 
 
+_DICTIONARY_FILE = re.compile(r"^PCDD-(\d{4})-data-dictionary\.xlsx$")
+
+
+def check_dictionary_version(release_dir: Path, release: str) -> None:
+    """Warn if the data dictionary shipped in the release folder is not the one
+    ``dictionary_version()`` computes from the release month.
+
+    The computed version assumes one dictionary per financial year; a mid-year
+    re-issue would only show up as a differently named file on disk.
+    """
+    on_disk = [f"PCDD-{m.group(1)}" for p in release_dir.iterdir()
+               if (m := _DICTIONARY_FILE.match(p.name))]
+    expected = dictionary_version(release)
+    if on_disk and on_disk != [expected]:
+        warnings.warn(
+            f"{release}: dictionary on disk is {on_disk} but dictionary_version() gives "
+            f"{expected!r}; rows will carry {expected!r}. Check whether NHS England has "
+            "re-issued the dictionary mid-year.", stacklevel=2)
+
+
 def load_release(release_dir: Path, release: str | None = None,
                  ingested_at: pd.Timestamp | None = None) -> pd.DataFrame:
     """One release folder -> silver rows with all-sex rows derived, not stored."""
     release = release or release_dir.name
     ingested_at = ingested_at or pd.Timestamp.now()
+    check_dictionary_version(release_dir, release)
     published = pd.concat(
         [load_file(p, release, ingested_at) for p in release_files(release_dir)], ignore_index=True)
     kept = drop_published_all_sex_rows(published)
@@ -293,7 +315,15 @@ def overlapping_observations(df: pd.DataFrame) -> int:
 
 
 def resolve_latest_release(df: pd.DataFrame) -> pd.DataFrame:
-    """One row per observation: the most recent source_release wins."""
+    """One row per observation: the most recent source_release wins.
+
+    "Most recent" is a string sort, which is only chronological because releases are
+    named ``YYYY-MM`` - so that is checked first.
+    """
+    releases = df["source_release"].dropna().unique()
+    malformed = [r for r in releases if not _RELEASE_NAME.match(str(r))]
+    if malformed:
+        raise ValueError(f"source_release must be YYYY-MM to sort chronologically; got {malformed}")
     key = list(OBSERVATION_KEY)
     return (df.sort_values(["source_release"], kind="stable")
               .drop_duplicates(key, keep="last")

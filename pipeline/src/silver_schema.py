@@ -157,7 +157,17 @@ def dictionary_version(release: str) -> str:
 # The silver observation shape
 # --------------------------------------------------------------------------------------
 
+# The five breakdown dimensions, in canonical order. This is the single definition:
+# measure_crosswalk.MeasureKey's fields and the loader's column handling are checked
+# against it rather than repeating the list.
+DIMENSION_COLUMNS: tuple[str, ...] = ("age", "gender", "ethnicity", "dementia_type", "residential_type")
+
 # Column -> pandas dtype. Order is the canonical column order.
+#
+# Identity note: ``org_code`` is the ODS code for every NHS level (practice, Sub-ICB,
+# ICB, region, England = "ENG") but the *ONS* code for local-government levels
+# (LTLA, UTLA, GOR, and England = "E92000001" in la_rate), because la_rate publishes
+# no ODS code. Join on (org_level, org_code), never on org_code alone.
 SILVER_COLUMNS: dict[str, str] = {
     # provenance
     "source_release": "string",         # YYYY-MM of the publication the row came from
@@ -168,15 +178,11 @@ SILVER_COLUMNS: dict[str, str] = {
     # grain
     "period_end": "datetime64[ns]",
     "org_level": "string",              # org_crosswalk.ORG_LEVELS
-    "org_code": "string",               # ODS code where one exists, else ONS code (la_rate)
+    "org_code": "string",               # ODS code where one exists, else ONS code - see note above
     "ons_code": "string",               # secondary identifier; England normalised
     "measure": "string",
     "breakdown": "string",
-    "age": "string",
-    "gender": "string",
-    "ethnicity": "string",
-    "dementia_type": "string",
-    "residential_type": "string",
+    **{dimension: "string" for dimension in DIMENSION_COLUMNS},
     # value
     "value_raw": "string",
     "value_num": "float64",
