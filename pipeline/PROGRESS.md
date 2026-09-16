@@ -16,10 +16,10 @@ No dates — WORKLOG.md has those. Tick things off here as they land._
 - [x] Derived rows: drop published `ALL_AGED_*`, recompute Female + Male, suppression carries through — `src/derived_rows.py`
 - [x] Checked whether summing Sub-ICBs reproduces Era A's published ICB / Region / England figures: exact for register-type measures, approximately (±15) for the rest — `tests/test_aggregation_evidence.py`
 - [x] Silver loader: all three releases → one observation frame, revision check, latest-release-wins, Parquet in/out — `src/silver_loader.py`
+- [x] Write the silver Parquet to `data/processed/silver/` — `python -m src.build`
 
 ## Next
 
-- [x] Write the silver Parquet to `data/processed/silver/` — `python -m src.build`
 - [ ] Hierarchy aggregation for Era-B measures (Sub-ICB → ICB → Region → England) with suppression propagation and a "computed" marker — waits on the "noisy measures" decision in NOW.md
 - [ ] Load the mapping snapshots (practice → Sub-ICB → ICB → Region) so practice rows can be placed in the hierarchy
 - [ ] Load the Era-B practice file (`pcdem-practice`)
