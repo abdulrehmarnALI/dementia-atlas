@@ -97,12 +97,28 @@ Then, and only then, gold and the app build.
 - **Any sum over a suppressed cell is itself suppressed.** `value_state` propagates through
   derived rows and aggregates (`src/derived_rows.py::sum_with_state`); silver never publishes a
   partial sum as if it were a total.
+- **`U2G6B` is not `D4U1Y` under a new code — the two are never joined.** D4U1Y (NHS Frimley
+  ICB – D4U1Y) closed on 31 March 2026 and its 66 practices were split three ways at the ICB
+  reorganisation: 41 to the new `U2G6B` (NHS Thames Valley ICB), 14 to `D9Y0V` (Hampshire and
+  Isle of Wight) and 11 to `92A`. So `U2G6B` starts fresh, and `D9Y0V` and `92A` keep their codes
+  but change geography — a series on either is two different populations either side of
+  2026-04, which a code-only check would miss. All three carry a `2026-04` series-break flag in
+  `src/org_crosswalk.py` (`sub_icb_series_break`). Source: NHS England ODS, *ICB mergers 2026
+  change summary* (linked from the module); practice counts verified from the March and June
+  2026 mapping snapshots.
+- **Practice-level history starts at June 2026.** The Era-A practice files
+  (`pcdem-prac-anti-psy`, `pcdem-prac-ass-plans`, `pcdem-prac-data-date`) are held on disk but are
+  out of scope for silver: their `*` suppression rule is different and undocumented, and the
+  Atlas doesn't need practice-level time series before the Era-B format. The Era-B practice file
+  loads from June 2026 onward.
 - **Aggregation by summing Sub-ICBs is validated only for register / list-size measures.** Era A
   shows England = Σ Regions exactly and ICB = Σ Sub-ICBs exactly for `DEMENTIA_REGISTER`,
   `DEMENTIA_REGISTER_65_PLUS` and `PAT_LIST`, but the event-type measures (incidence, delirium,
   young onset, palliative care, comorbidities, MCI) differ from the sum by up to ±15 patients in
-  both directions. Computed Era-B aggregates for those must carry a "computed" marker; whether
-  the Atlas shows them at all is an open decision (`NOW.md`).
+  both directions. Computed Era-B aggregates for those must carry a "computed" marker; the
+  display rule is still to be chosen — the measured error per measure per level is in
+  `docs/aggregation_error_era_a.md`, and it does *not* track suppression rate (the suppression-
+  free files are just as inexact), so the rule should key on count size, not suppression.
 
 ## Known open questions
 
@@ -111,8 +127,7 @@ Carried from findings §10 — these are genuinely unresolved, not homework some
 1. Are Era-B releases ever revised? Untestable until two Era-B publications share a period.
 2. Do the April and May 2026 publications follow Era A or Era B? The boundary is *inferred* from
    the financial year, not observed. Those two months are also missing from local data entirely.
-3. Is Sub-ICB `U2G6B` (new at 2026-06) a recode of retired `D4U1Y`, or a different organisation?
-   Decides whether those series may be joined. Currently treated as **not** continuous.
+3. ~~Is Sub-ICB `U2G6B` a recode of retired `D4U1Y`?~~ Resolved — see decisions above.
 4. What is NHS England's archive retention policy for past PCDD publications? Era B's
    single-month model makes the Atlas dependent on every month staying downloadable — if old
    releases disappear, the ingestion schedule becomes non-negotiable.
@@ -120,7 +135,8 @@ Carried from findings §10 — these are genuinely unresolved, not homework some
    Sub-ICBs (see decisions above)? Small, symmetric, unsuppressed gaps — the publisher appears
    to compute each level independently. Not answerable from the data.
 6. What does `*` mean in the Era-A practice-level files? They publish 0 and 1–4 alongside it,
-   so it isn't the Sub-ICB files' "0–4 suppressed" rule, and neither dictionary says.
+   so it isn't the Sub-ICB files' "0–4 suppressed" rule, and neither dictionary says. Moot for
+   now — those files are out of scope (decision above) — but worth knowing if that ever changes.
 
 ## Add to this file when...
 
