@@ -9,17 +9,16 @@ _(empty — pick the top item below to start)_
 
 ## Up next (small, independently shippable — pick one at a time)
 
-1. Build the silver loader: read each raw release (both eras) into the `SILVER_COLUMNS`
-   observation frame using `org_crosswalk`, `measure_crosswalk`, `silver_schema` and
-   `derived_rows`, and write Parquet to `data/processed/silver/`. Start with the two rate files
-   and the Sub-ICB measure files (Era-A split files, Era-B consolidated file); mapping and
-   practice-level files after.
-2. Implement hierarchy aggregation for Era-B measures (Sub-ICB → ICB → Region → England) with
+1. Implement hierarchy aggregation for Era-B measures (Sub-ICB → ICB → Region → England) with
    suppression propagation and an explicit "computed" marker, using the rule pinned in
    `tests/test_aggregation_evidence.py` (exact for register/list-size measures, approximate for
-   the rest — see "Needs a decision").
-3. Revision check on load: assert that overlapping periods across releases are identical
-   (context.md revision policy). Needs May 2025 locally to actually exercise.
+   the rest — see "Needs a decision"). Needs a per-period Sub-ICB → ICB → Region hierarchy:
+   Era A has it on the age/sex file rows, Era B only in the mapping snapshot.
+2. Load the mapping snapshots (practice → Sub-ICB → ICB → Region, per release) as a silver
+   dimension table, left-joinable with an `unmapped` flag (context.md decision).
+3. Load the Era-B practice file (`pcdem-practice`) into the observation frame — `MEASURE` is a
+   roll-up of `BREAKDOWN` there, so the breakdown names (`DEMENTIA_REGISTER_0_64`, …) need
+   decoding into age tokens the same way Era-A strings do.
 4. Era-A practice-level crosswalk (`pcdem-prac-anti-psy`, `pcdem-prac-ass-plans`): their
    `Measure` names line up with Era B's `PRESCRIBING` / `REVIEWS` breakdowns and the practice
    file's `DEMENTIA_REGISTER_0_64` / `PAT_LIST_65_PLUS` (mixed case aside). Blocked on the
@@ -32,8 +31,6 @@ _(empty — pick the top item below to start)_
   `silver_schema.publication_era()` deliberately refuses those two months until a file is seen.
 - Whether Era-B is ever revised is untestable until a second Era-B release exists (QA notebook
   §11, Q1) — nothing to do here yet, just don't assume "latest release wins" logic gets exercised.
-- May 2025 raw files aren't in `data/raw/pcdd/` (March 2026 and June 2026 are). Needed for the
-  revision check (item 3) and to re-derive the May-2025-only evidence.
 - Docs mismatch: CLAUDE.md points at `../docs/context.md` and `../docs/findings.md` §1–§10, but
   context.md lives at `pipeline/context.md` and findings.md has no numbered sections (it only
   covers the June 2026 structure). The numbered-section evidence is in

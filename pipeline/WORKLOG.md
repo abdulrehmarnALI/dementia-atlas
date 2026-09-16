@@ -65,3 +65,21 @@ is a skimmable log, not a transcript._
   NOW.md, context.md. Nine commits, pushed.
 - Next: the silver loader (NOW.md item 1), then hierarchy aggregation once the "computed
   aggregates for noisy measures" decision is made.
+
+### 2026-09-16 (later) - Silver loader; May 2025 landed
+
+- May 2025 raw files arrived (schema identical to March 2026, as the QA notebook said).
+- Built `src/silver_loader.py`: every raw CSV classified into a family; the nine analytical
+  families (two rate files, seven Era-A Sub-ICB families, Era-B consolidated Sub-ICB file) load
+  into the SILVER_COLUMNS frame via the org/measure crosswalks, value classification and
+  derived rows. Cross-release revision check (`find_revisions`) and latest-release-wins
+  resolution. `python -m src.build` writes Parquet to data/processed/silver/.
+- Re-derived the notebook's headline on the loaded frame: 33,394 published observations
+  overlap between May 2025 and March 2026 (35,302 minus the 1,908 ALL_AGED rows silver
+  drops), zero differ.
+- Vectorised `derive_all_sex_rows` so a full release derives in well under a second.
+- Added `PROGRESS.md` (undated done/next list) at Sunshine's request; pinned pyarrow.
+- Touched: src/{silver_loader,build}.py, src/{derived_rows,measure_crosswalk}.py (small),
+  tests/test_silver_loader.py (70 tests total, all pass), NOW.md, PROGRESS.md.
+- Next: hierarchy aggregation (NOW.md item 1) once the noisy-measures decision is made; mapping
+  snapshots and the Era-B practice file are unblocked and could go first.
