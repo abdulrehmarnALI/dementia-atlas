@@ -31,11 +31,13 @@ No dates — WORKLOG.md has those. Tick things off here as they land._
 - [x] Gold tables built from silver: organisation, measure, period, observation, diagnosis_rate, series_break, geometry — `src/gold.py`, `data/processed/gold/`
 - [x] PostGIS schema and loader (COPY + dissolved ICB / region outlines) and a local docker-compose — `db/schema.sql`, `src/load_postgis.py`, `infra/docker-compose.yml`
 - [x] Gold loaded into a local PostGIS container end to end; ICB and region outlines dissolve cleanly; round-trip test passes
+- [x] Boundaries for every level from the ONS Open Geography Portal, both NHS worlds (April 2023 / April 2026), resolved 100% against silver; drawn by period via `period.boundary_version_nhs` — `src/boundaries.py`
+- [x] GP practice coordinates via postcodes.io, cached; `gold.practice_location` with 99.97% located — `src/geocode.py`
 
 ## Next
 
-- [ ] Local-authority (LTLA / UTLA) boundaries into `geometry`
-- [ ] Web app scaffold: one map page over `gold.diagnosis_rate` + `gold.geometry`
+- [ ] Web app scaffold: one map page over `gold.diagnosis_rate` + `gold.geometry`, level switcher
+- [ ] Practice points on the map, clustered on zoom
 - [ ] Export the QA notebook's numbered findings into `docs/findings.md`
 - [ ] Build writes a short QA summary (`build_summary.md`) next to the Parquet
 - [ ] Back-fill April and May 2026 once those publications are sourced

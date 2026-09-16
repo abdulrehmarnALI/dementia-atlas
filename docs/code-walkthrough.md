@@ -317,15 +317,38 @@ A measure can have more than one break (MCI: introduced 2024-06 *and* suppressio
 
 ---
 
+## `boundaries.py` — polygons for every level, from ONS
+
+**What it does.** `BOUNDARY_LAYERS` names one ONS Open Geography layer per (level, boundary
+version) — eight in all, including *both* NHS worlds (April 2023 with 42 ICBs, April 2026 with 36).
+`fetch_layer()` pages the portal's public FeatureServer `query` endpoint into
+`data/raw/boundaries/<layer>.geojson` once and never again. `load_boundaries(silver)` turns the
+cached files into gold `geometry` rows, resolving each polygon's ONS code to a silver `org_code`:
+local-authority levels by the canonical ONS code, NHS levels through `ons_to_org_code()` — every
+(level, ONS code) → ODS code pair silver has ever carried, so D9Y0V resolves under both its old and
+its new ONS code. **Any polygon that resolves to nothing stops the build** with the codes listed;
+that check is how the LAD/CTYUA years were picked. `coverage()` is the per-layer scorecard the tests
+assert. `nhs_boundary_version(period)` is the one rule: `2023-04` before 2026-04, `2026-04` after.
+
+## `geocode.py` — practice points from postcodes
+
+`geocode_postcodes()` sends distinct, normalised postcodes to api.postcodes.io in batches of 100
+and caches every answer (including "unknown", as NA) in `data/raw/geocode/postcodes.parquet`; a
+rebuild only asks about postcodes it has never seen, and `fetch=False` means "cache only, no
+network" (what the tests use). `practice_locations(mapping)` gives one row per practice from the
+latest snapshot it appears in, with coordinates and its Sub-ICB / ICB / region.
+
 ## `gold.py` — silver reshaped for the app
 
-**What it does.** Reads the five silver Parquet files and produces seven app-shaped tables, with
+**What it does.** Reads the five silver Parquet files and produces eight app-shaped tables, with
 no new facts computed: `organisation` (one row per org, with name, parent, first/last period,
 series-break period), `measure` (one row per measure/breakdown/dimension combination with a stable
-string `measure_key` and a dictionary description), `period`, `observation` (the fact table —
-silver's latest-release-wins frame with a `measure_key`), `diagnosis_rate` (the five headline
-measures pivoted wide), `series_break` (copied through) and `geometry` (Sub-ICB polygons as GeoJSON
-text). `python -m src.gold` writes them to `data/processed/gold/`.
+string `measure_key` and a dictionary description), `period` (with `boundary_version_nhs`),
+`observation` (the fact table — silver's latest-release-wins frame with a `measure_key`),
+`diagnosis_rate` (the five headline measures pivoted wide), `series_break` (copied through),
+`geometry` (every level's polygons, versioned — from `boundaries`) and `practice_location` (from
+`geocode`). `python -m src.gold` writes them to `data/processed/gold/`; `build_gold(fetch=False)`
+uses only what's cached.
 
 **Things to know.**
 
@@ -335,15 +358,18 @@ text). `python -m src.gold` writes them to `data/processed/gold/`.
   → Sub-ICB. Local-authority tiers have no parent in the data except GOR → England.
 - `dictionary_descriptions()` reads the Era-B data dictionary and corrects its two naming slips
   (`REVIEW` → `REVIEWS`, `PAT_LIST_65_PLUS` as a measure name).
-- The GeoJSON's `SICBL26CD` is an ONS code; the join to `org_code` goes through
-  `organisation.ons_code`.
+- England is unified to `ENG` (`unify_england`): la_rate publishes the same five England rows
+  under `E92000001`; gold drops those and raises if the two sources ever disagree.
+- An organisation's `ons_code` is the *latest* release's (D9Y0V and 92A were re-coded at the
+  reorganisation).
 
 ## `load_postgis.py` — gold into PostGIS
 
 Applies `db/schema.sql` (drop-and-recreate the `gold` schema), `COPY`s each table in foreign-key
-order, converts the GeoJSON text to PostGIS geometry, then **dissolves ICB and NHS-region
-outlines from the Sub-ICB polygons** with `ST_Union`, grouped by the current parent in
-`gold.organisation`. Needs `DATABASE_URL`; `infra/docker-compose.yml` gives you a local PostGIS.
+order, converts the GeoJSON text to PostGIS geometry (`ST_MakeValid`), derives `geom_web` with
+`ST_SimplifyPreserveTopology`, and builds practice points from lat/lon. Needs `DATABASE_URL`;
+`infra/docker-compose.yml` gives you a local PostGIS **on host port 5434** (5432 and 5433 are taken
+by native PostgreSQL services on this machine).
 
 ## `build.py` — the command
 

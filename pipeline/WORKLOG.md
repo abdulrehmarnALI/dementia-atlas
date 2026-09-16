@@ -156,3 +156,17 @@ is a skimmable log, not a transcript._
   the wrong server with a confusing password error; (2) England was in gold twice (ENG from the
   NHS files, E92000001 from la_rate). Gold now unifies to ENG and asserts the two sources agree.
 - Committed, not pushed.
+
+### 2026-09-17 - Boundaries for every level and era; practice points
+
+- Fetched eight ONS Open Geography layers (public ArcGIS REST, no key, cached under
+  data/raw/boundaries/): Sub-ICB and ICB for both April 2023 (Era A, 42 ICBs) and April 2026,
+  NHS regions, LAD May 2026, CTYUA Dec 2025, Regions Dec 2025. Every polygon resolves to a
+  silver organisation and every organisation has one (755 polygons, 8 level/version sets).
+  gold.period.boundary_version_nhs tells the app which set to draw a period on.
+- Geocoded all 5,773 practice postcodes via api.postcodes.io in 4 s (7 unknown, kept NA);
+  gold.practice_location with a PostGIS point for 6,253 of 6,255 practices.
+- Loader: dissolve hack removed in favour of official outlines; geom_web simplified for the
+  browser; practice points. 116 tests pass incl. the PostGIS round trip. Suite now ~3.5 min
+  because gold builds from the big GeoJSON twice - acceptable, noted.
+- Committed, not pushed. Next: the web app scaffold (NOW.md item 1).

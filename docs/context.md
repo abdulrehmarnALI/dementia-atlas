@@ -158,10 +158,26 @@ them into a `gold` schema in PostGIS; `infra/docker-compose.yml` runs PostGIS lo
   Everything else stays long.
 - **Names come back in gold** (from the raw NAME columns, latest release wins, title-cased), for
   display only. Silver still has none.
-- **Geometry**: the April 2026 Sub-ICB boundaries (EPSG:4326) are the only boundary set held.
-  They join to `org_code` via ONS code (106/106). ICB and NHS-region outlines are *dissolved from
-  Sub-ICBs in PostGIS at load time* using the current hierarchy — so they are post-reorganisation
-  outlines and must not be drawn under Era-A ICB data. No local-authority boundaries yet.
+- **Geometry comes from the ONS Open Geography Portal**, fetched once by `src/boundaries.py`
+  through its public ArcGIS REST API into `data/raw/boundaries/` (gitignored, re-fetchable). Eight
+  layers, all BGC (generalised, clipped to the coastline), EPSG:4326:
+  Sub-ICB April 2023 and April 2026; ICB April 2023 (42) and April 2026 (36); NHS regions Jan
+  2024; Local Authority Districts May 2026 (LTLA, uses the post-reissue codes); Counties and
+  Unitary Authorities Dec 2025 (UTLA, 153 incl. the 2025-07 county councils); Regions Dec 2025
+  (GOR). Every polygon resolves to an organisation silver knows and every organisation has a
+  polygon — the build fails otherwise, which is how the boundary years were chosen.
+- **NHS levels are drawn on the boundary set of their period**: `gold.period.boundary_version_nhs`
+  is `2023-04` up to 2026-03 and `2026-04` from 2026-04. The app joins
+  `geometry.boundary_version = period.boundary_version_nhs` and never has to know about the
+  reorganisation. Local-authority levels have one set each.
+- **`geom_web`** is `ST_SimplifyPreserveTopology(geom, 0.0005°)` (≈ 35–50 m), computed at load, for
+  the browser; `geom` keeps the full BGC polygon.
+- **GP practice coordinates come from api.postcodes.io** (free, no key, public postcode data),
+  bulk-looked-up by `src/geocode.py` and cached in `data/raw/geocode/postcodes.parquet` so a
+  rebuild sends only new postcodes. `gold.practice_location` has one row per practice ever seen
+  in a mapping snapshot (latest snapshot wins), 99.97% with a point; the seven postcodes the
+  service doesn't know stay NA rather than being guessed. Clustering on zoom is a MapLibre
+  client feature, not pipeline work.
 - **Tests build gold from the silver Parquet on disk**; the PostGIS round-trip test runs only when
   `DATABASE_URL` is set.
 
