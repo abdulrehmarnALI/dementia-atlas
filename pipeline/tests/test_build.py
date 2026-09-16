@@ -21,11 +21,13 @@ def test_release_dirs_refuses_a_mistyped_release():
         release_dirs(RAW_ROOT, ["2026-6"])
 
 
-def test_build_writes_the_four_parquet_files(tmp_path):
+def test_build_writes_the_five_parquet_files(tmp_path):
     assert main(["2026-06"], out_dir=tmp_path) == 0
     names = sorted(p.name for p in tmp_path.glob("*.parquet"))
     assert names == ["pcdd_hierarchy.parquet", "pcdd_latest.parquet", "pcdd_mapping.parquet",
-                     "pcdd_observations.parquet"]
+                     "pcdd_observations.parquet", "pcdd_series_breaks.parquet"]
+    breaks = pd.read_parquet(tmp_path / "pcdd_series_breaks.parquet")
+    assert (breaks["scope"] == "org").sum() == 23 and (breaks["kind"] == "introduced").any()
     observations = read_silver(tmp_path / "pcdd_observations.parquet")
     assert set(observations["source_release"]) == {"2026-06"}
     computed = observations[observations["source_file"].isna()]

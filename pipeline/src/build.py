@@ -11,6 +11,8 @@ Writes to ``data/processed/silver/``:
 - ``pcdd_latest.parquet``       - one row per observation, latest release wins
 - ``pcdd_mapping.parquet``      - the practice mapping snapshot of every release
 - ``pcdd_hierarchy.parquet``    - distinct Sub-ICB -> ICB -> region per release
+- ``pcdd_series_breaks.parquet`` - where a series on an organisation or a measure is
+                                  not comparable with its own past
 
 Fails if any overlapping observation differs between releases.
 """
@@ -22,6 +24,7 @@ import pandas as pd
 
 from .aggregation import fill_missing_aggregates
 from .mapping_loader import hierarchy, load_mapping
+from .series_breaks import build_series_breaks
 from .silver_loader import build_silver, classify_file, resolve_latest_release, write_silver
 
 PIPELINE_DIR = Path(__file__).resolve().parents[1]
@@ -60,16 +63,18 @@ def main(argv: list[str] | None = None, raw_root: Path = RAW_ROOT, out_dir: Path
     aggregates = fill_missing_aggregates(published, hier)
     silver = pd.concat([published, aggregates], ignore_index=True)
     latest = resolve_latest_release(silver)
+    breaks = build_series_breaks(published)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     write_silver(silver, out_dir / "pcdd_observations.parquet")
     write_silver(latest, out_dir / "pcdd_latest.parquet")
     mapping.to_parquet(out_dir / "pcdd_mapping.parquet", index=False)
     hier.to_parquet(out_dir / "pcdd_hierarchy.parquet", index=False)
+    breaks.to_parquet(out_dir / "pcdd_series_breaks.parquet", index=False)
 
     by_release = published.groupby("source_release").size().to_dict()
     print(f"silver: {len(published):,} loaded rows from {by_release} + {len(aggregates):,} computed "
-          f"aggregates; latest-wins: {len(latest):,} rows")
+          f"aggregates; latest-wins: {len(latest):,} rows; {len(breaks)} series breaks")
     print(f"mapping: {len(mapping):,} practice rows across {mapping['source_release'].nunique()} snapshots")
     print(f"written to {out_dir}")
     return 0
