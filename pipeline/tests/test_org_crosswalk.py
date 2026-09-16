@@ -27,14 +27,17 @@ from src.org_crosswalk import (  # noqa: E402
     ICB_CODES_RETIRED_2026_06,
     LTLA_ONS_CODE_REISSUES,
     ORG_LEVEL_BY_ORG_TYPE,
+    SUB_ICB_BOUNDARY_BREAKS_2026_04,
     SUB_ICB_CODES_INTRODUCED_2026_06,
     SUB_ICB_CODES_RETIRED_2026_06,
     SUB_ICB_ICB_REASSIGNMENTS_2026_06,
+    SUB_ICB_SUCCESSORS_2026_04,
     canonical_ltla_ons_code,
     icb_successors,
     is_england,
     new_icb_for_sub_icb,
     normalise_ons_code,
+    sub_icb_series_break,
     to_org_level,
 )
 
@@ -310,3 +313,30 @@ def test_ltla_reissue_happens_at_2025_08_inside_the_march_release(la_rate_mar):
     # After canonicalising, the LTLA set is identical in every period.
     canonical = {frozenset(canonical_ltla_ons_code(c) for c in codes) for codes in by_period}
     assert len(canonical) == 1
+
+
+def test_d4u1y_practices_split_across_three_successors(mapping_mar, mapping):
+    """D4U1Y closed at the reorganisation; where its practices went is read straight
+    off the two mapping snapshots. They are also the ONLY practices that changed
+    Sub-ICB, so the boundary-break list is complete."""
+    frimley = mapping_mar[mapping_mar["SUB_ICB_LOCATION_CODE"] == "D4U1Y"]
+    assert len(frimley) == 66 and set(frimley["ICB_CODE"]) == {"QNQ"}
+    destination = frimley["PRACTICE_CODE"].map(mapping.set_index("PRACTICE_CODE")["SUB_ICB_LOCATION_CODE"])
+    assert destination.value_counts().to_dict() == SUB_ICB_SUCCESSORS_2026_04["D4U1Y"]
+
+    both = mapping_mar[["PRACTICE_CODE", "SUB_ICB_LOCATION_CODE"]].merge(
+        mapping[["PRACTICE_CODE", "SUB_ICB_LOCATION_CODE"]], on="PRACTICE_CODE", suffixes=("_mar", "_jun"))
+    moved = both[both["SUB_ICB_LOCATION_CODE_mar"] != both["SUB_ICB_LOCATION_CODE_jun"]]
+    assert set(moved["SUB_ICB_LOCATION_CODE_mar"]) == {"D4U1Y"}
+    assert set(moved["SUB_ICB_LOCATION_CODE_jun"]) == set(SUB_ICB_BOUNDARY_BREAKS_2026_04)
+
+    # U2G6B is essentially the Frimley practices under a new ICB; D9Y0V and 92A kept
+    # their code and gained exactly the Frimley practices - code-stable, boundary-unstable.
+    assert set(mapping.loc[mapping["SUB_ICB_LOCATION_CODE"] == "U2G6B", "ICB_CODE"]) == {"S0E4D"}
+    frimley_destination = dict(zip(frimley["PRACTICE_CODE"], destination))
+    for code in ("D9Y0V", "92A"):
+        before = set(mapping_mar.loc[mapping_mar["SUB_ICB_LOCATION_CODE"] == code, "PRACTICE_CODE"])
+        after = set(mapping.loc[mapping["SUB_ICB_LOCATION_CODE"] == code, "PRACTICE_CODE"])
+        assert after - before == {p for p, d in frimley_destination.items() if d == code}
+    assert sub_icb_series_break("D9Y0V") == "2026-04" == sub_icb_series_break("D4U1Y")
+    assert sub_icb_series_break("00L") is None

@@ -103,7 +103,13 @@ def canonical_ltla_ons_code(code: str) -> str:
 # 4. ICB reorganisation (2026-06 era boundary)
 # --------------------------------------------------------------------------------------
 
-ICB_REORG_EFFECTIVE = "2026-06"
+# Legally effective 1 April 2026 (closures dated 31 March 2026) per NHS England ODS;
+# first visible in the data between the 2026-03 and 2026-06 releases because April and
+# May 2026 are not held.
+ICB_REORG_SOURCE = ("https://digital.nhs.uk/services/organisation-data-service/"
+                    "upcoming-code-changes/icb-mergers-2026-change-summary")
+ICB_REORG_EFFECTIVE = "2026-04"
+ICB_REORG_FIRST_OBSERVED_RELEASE = "2026-06"
 
 ICB_CODES_RETIRED_2026_06 = frozenset({
     "QH8", "QHG", "QJG", "QM7", "QMJ", "QMM",
@@ -114,11 +120,35 @@ ICB_CODES_INTRODUCED_2026_06 = frozenset({
     "D7T5G", "S0E4D", "S1Y5D", "S9B9J", "T6Y0W", "Z9B2Z",
 })
 
-# The Sub-ICB set changes by exactly one code at the same boundary (count stays 106).
-# Whether U2G6B is D4U1Y recoded, or a genuinely different organisation, is not
-# decidable from the local data - do not treat them as a continuous series.
+# The Sub-ICB set changes by exactly one code at the same boundary (count stays 106):
+# D4U1Y (NHS Frimley ICB - D4U1Y, under QNQ) closed on 31 March 2026 and its practices
+# were split across three successors - so U2G6B is NOT D4U1Y under a new code and the
+# two must never be joined as one series. Decision recorded in docs/context.md; source
+# ICB_REORG_SOURCE; practice counts from the 2026-03 vs 2026-06 mapping snapshots.
 SUB_ICB_CODES_RETIRED_2026_06 = frozenset({"D4U1Y"})
 SUB_ICB_CODES_INTRODUCED_2026_06 = frozenset({"U2G6B"})
+
+SUB_ICB_SUCCESSORS_2026_04: dict[str, dict[str, int]] = {
+    # closed code -> {successor: practices received}
+    "D4U1Y": {"U2G6B": 41, "D9Y0V": 14, "92A": 11},
+}
+
+# Sub-ICBs whose code survives the boundary but whose geography does not. A series on
+# any of these is two different populations either side of 2026-04, even though the
+# code never changes - the kind of break a code-only check would miss.
+SUB_ICB_BOUNDARY_BREAKS_2026_04: dict[str, str] = {
+    "U2G6B": "new Sub-ICB under NHS Thames Valley ICB (S0E4D); 41 of its 42 practices were D4U1Y",
+    "D9Y0V": "NHS Hampshire and Isle of Wight ICB - D9Y0V expanded: absorbed 14 D4U1Y practices",
+    "92A": "expanded: absorbed 11 D4U1Y practices (also moved from ICB QXU to S9B9J)",
+}
+
+
+def sub_icb_series_break(code: str) -> str | None:
+    """The period from which a Sub-ICB series is not comparable with its own past
+    (``"2026-04"``), or None if the organisation is geographically stable."""
+    if code in SUB_ICB_BOUNDARY_BREAKS_2026_04 or code in SUB_ICB_CODES_RETIRED_2026_06:
+        return ICB_REORG_EFFECTIVE
+    return None
 
 # The 23 Sub-ICBs whose parent ICB changed at 2026-06, as {sub_icb: (old_icb, new_icb)}.
 # This is the authoritative form of the reorganisation: old ICB -> new ICB is
