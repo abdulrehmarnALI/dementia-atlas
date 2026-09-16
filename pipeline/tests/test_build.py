@@ -28,6 +28,9 @@ def test_build_writes_the_four_parquet_files(tmp_path):
                      "pcdd_observations.parquet"]
     observations = read_silver(tmp_path / "pcdd_observations.parquet")
     assert set(observations["source_release"]) == {"2026-06"}
+    computed = observations[observations["source_file"].isna()]
+    assert computed["is_derived"].all() and set(computed["org_level"]) == {"icb", "nhs_region", "country"}
+    assert len(computed) > 1000
     mapping = pd.read_parquet(tmp_path / "pcdd_mapping.parquet")
     assert list(mapping.columns) == list(MAPPING_COLUMNS) and len(mapping) == 6182
     hier = pd.read_parquet(tmp_path / "pcdd_hierarchy.parquet")

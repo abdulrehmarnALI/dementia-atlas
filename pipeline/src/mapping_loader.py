@@ -67,6 +67,7 @@ _RENAME = {
 }
 
 HIERARCHY_CODE_COLUMNS = ("sub_icb_code", "icb_code", "region_code")
+HIERARCHY_ONS_COLUMNS = ("sub_icb_ons_code", "icb_ons_code", "region_ons_code")
 _NAME_COLUMNS = ("practice_name", "pcn_name", "sub_icb_name", "icb_name", "region_name", "supplier_name")
 
 
@@ -102,8 +103,8 @@ def load_mapping(path: Path, release: str) -> pd.DataFrame:
 def hierarchy(mapping: pd.DataFrame) -> pd.DataFrame:
     """Distinct Sub-ICB -> ICB -> region triples from a snapshot, with a check that
     each Sub-ICB has exactly one parent chain (else the snapshot is inconsistent)."""
-    h = (mapping.loc[~mapping["unmapped"], ["source_release", *HIERARCHY_CODE_COLUMNS]]
-         .drop_duplicates().reset_index(drop=True))
+    cols = ["source_release", *HIERARCHY_CODE_COLUMNS, *HIERARCHY_ONS_COLUMNS]
+    h = mapping.loc[~mapping["unmapped"], cols].drop_duplicates().reset_index(drop=True)
     parents = h.groupby(["source_release", "sub_icb_code"]).size()
     if (parents > 1).any():
         raise ValueError(f"Sub-ICBs with more than one parent chain: {parents[parents > 1].index.tolist()}")

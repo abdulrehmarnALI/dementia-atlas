@@ -4,7 +4,10 @@
 
 Writes to ``data/processed/silver/``:
 
-- ``pcdd_observations.parquet`` - every release, every row, ``source_release`` kept
+- ``pcdd_observations.parquet`` - every release, every row, ``source_release`` kept;
+                                  includes the computed ICB / region / England
+                                  aggregates for levels the publisher did not publish
+                                  (``is_derived = True``, no ``source_file``)
 - ``pcdd_latest.parquet``       - one row per observation, latest release wins
 - ``pcdd_mapping.parquet``      - the practice mapping snapshot of every release
 - ``pcdd_hierarchy.parquet``    - distinct Sub-ICB -> ICB -> region per release
@@ -17,6 +20,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from .aggregation import fill_missing_aggregates
 from .mapping_loader import hierarchy, load_mapping
 from .silver_loader import build_silver, classify_file, resolve_latest_release, write_silver
 
@@ -50,18 +54,22 @@ def main(argv: list[str] | None = None, raw_root: Path = RAW_ROOT, out_dir: Path
     release_dirs(raw_root, releases)   # fail early on a mistyped release name
     ingested_at = pd.Timestamp.now()
 
-    silver = build_silver(raw_root, releases, ingested_at=ingested_at)
-    latest = resolve_latest_release(silver)
+    published = build_silver(raw_root, releases, ingested_at=ingested_at)
     mapping = build_mapping(raw_root, releases)
+    hier = hierarchy(mapping)
+    aggregates = fill_missing_aggregates(published, hier)
+    silver = pd.concat([published, aggregates], ignore_index=True)
+    latest = resolve_latest_release(silver)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     write_silver(silver, out_dir / "pcdd_observations.parquet")
     write_silver(latest, out_dir / "pcdd_latest.parquet")
     mapping.to_parquet(out_dir / "pcdd_mapping.parquet", index=False)
-    hierarchy(mapping).to_parquet(out_dir / "pcdd_hierarchy.parquet", index=False)
+    hier.to_parquet(out_dir / "pcdd_hierarchy.parquet", index=False)
 
-    by_release = silver.groupby("source_release").size().to_dict()
-    print(f"silver: {len(silver):,} rows from {by_release}; latest-wins: {len(latest):,} rows")
+    by_release = published.groupby("source_release").size().to_dict()
+    print(f"silver: {len(published):,} loaded rows from {by_release} + {len(aggregates):,} computed "
+          f"aggregates; latest-wins: {len(latest):,} rows")
     print(f"mapping: {len(mapping):,} practice rows across {mapping['source_release'].nunique()} snapshots")
     print(f"written to {out_dir}")
     return 0
