@@ -5,11 +5,10 @@ against the raw June 2026 release files - no pipeline code in the loop, just
 ``pd.read_csv`` and set logic. If NHS England ever republishes these files
 differently, these tests fail before the crosswalk quietly lies.
 
-Scope note: only the June 2026 (Era B) release is on disk. Claims whose evidence
-lives in the Era-A releases (the ``COUNTRY``/``REGION`` ORG_TYPE tokens, the *old*
-side of the 2026-06 ICB reorganisation, the pre-reissue LTLA codes) came from
-``notebooks/03_cross_release_qa.ipynb`` and are exercised here as pure functions
-only. Extend these tests when the May 2025 / March 2026 raw files land locally.
+Two releases are on disk and both are used: June 2026 (Era B) for the *new* side
+of every boundary, March 2026 (Era A, 13 monthly periods) for the *old* side - the
+``COUNTRY``/``REGION`` ORG_TYPE tokens, the retired ICB codes, the pre-reissue LTLA
+codes. May 2025 is not held locally.
 """
 
 import sys
@@ -39,18 +38,25 @@ from src.org_crosswalk import (  # noqa: E402
     to_org_level,
 )
 
-RAW_2026_06 = PIPELINE_DIR / "data" / "raw" / "pcdd" / "2026-06"
+RAW = PIPELINE_DIR / "data" / "raw" / "pcdd"
+RAW_2026_06 = RAW / "2026-06"
+RAW_2026_03 = RAW / "2026-03"
 
 
-def read_raw(filename: str) -> pd.DataFrame:
+def read_raw(filename: str, release_dir: Path = RAW_2026_06) -> pd.DataFrame:
     """Lossless read: everything as strings, no NA coercion, BOM-tolerant.
 
     ``keep_default_na=False`` matters because the files use ``N/A`` and the literal
     string ``NULL`` as meaningful tokens; ``utf-8-sig`` because the mapping file
     carries a BOM that would otherwise corrupt its first column name.
     """
-    return pd.read_csv(RAW_2026_06 / filename, dtype=str, keep_default_na=False,
+    return pd.read_csv(release_dir / filename, dtype=str, keep_default_na=False,
                        encoding="utf-8-sig")
+
+
+def period(ach_date: pd.Series) -> pd.Series:
+    """Era-A ACH_DATE (``31-Mar-26``) -> ``YYYY-MM``."""
+    return pd.to_datetime(ach_date, format="%d-%b-%y").dt.strftime("%Y-%m")
 
 
 @pytest.fixture(scope="module")
@@ -76,6 +82,26 @@ def practice():
 @pytest.fixture(scope="module")
 def mapping():
     return read_raw("mapping-file-july-dementia-2026.csv")
+
+
+@pytest.fixture(scope="module")
+def nhs_rate_mar():
+    return read_raw("pcdem-nhs-rate-mar-2026.csv", RAW_2026_03)
+
+
+@pytest.fixture(scope="module")
+def la_rate_mar():
+    return read_raw("pcdem-la-rate-mar-2026.csv", RAW_2026_03)
+
+
+@pytest.fixture(scope="module")
+def cog_imp_mar():
+    return read_raw("pcdem_sicbl-cog-imp-mar-2026.csv", RAW_2026_03)
+
+
+@pytest.fixture(scope="module")
+def mapping_mar():
+    return read_raw("gp-reg-pat-prac-map-03-2026.csv", RAW_2026_03)
 
 
 # --------------------------------------------------------------------------------------
@@ -205,3 +231,82 @@ def test_new_icb_for_sub_icb_handles_moved_and_unmoved_practices():
     # Disagreement between caller and crosswalk is an error, not a guess.
     with pytest.raises(ValueError):
         new_icb_for_sub_icb("06Q", "QHM")
+
+
+# --------------------------------------------------------------------------------------
+# Era-A side of every boundary, re-derived from the March 2026 release
+# --------------------------------------------------------------------------------------
+
+def test_era_a_org_type_vocabulary_is_covered(cog_imp_mar, nhs_rate_mar, la_rate_mar):
+    # The Era-A multi-level measure files use a third vocabulary for the same levels.
+    assert set(cog_imp_mar["ORG_TYPE"]) == {"COUNTRY", "REGION", "ICB", "SUB_ICB"}
+    assert ({to_org_level(t) for t in cog_imp_mar["ORG_TYPE"].unique()}
+            == {to_org_level(t) for t in nhs_rate_mar["ORG_TYPE"].unique()}
+            == {"country", "nhs_region", "icb", "sub_icb"})
+    seen = set(nhs_rate_mar["ORG_TYPE"]) | set(la_rate_mar["ORG_TYPE"]) | set(cog_imp_mar["ORG_TYPE"])
+    assert not (seen - set(ORG_LEVEL_BY_ORG_TYPE))
+
+
+def test_england_alias_holds_in_era_a(cog_imp_mar, nhs_rate_mar):
+    eng = cog_imp_mar[cog_imp_mar["ORG_TYPE"] == "COUNTRY"]
+    assert set(eng["ORG_CODE"]) == {ENGLAND_ODS_CODE}
+    assert set(eng["ONS_CODE"]) == {ENGLAND_ONS_CODE}   # the Era-A measure files get it right
+    nhs_eng = nhs_rate_mar[nhs_rate_mar["ORG_TYPE"] == "COUNTRY_RESPONSIBILITY"]
+    assert set(nhs_eng["ONS_CODE"]) == {ENGLAND_ODS_CODE}   # nhs_rate gets it wrong in Era A too
+
+
+def test_march_2026_icb_set_is_the_pre_reorg_universe(nhs_rate_mar, mapping_mar):
+    latest = nhs_rate_mar[nhs_rate_mar["ACH_DATE"] == "31-Mar-26"]
+    icbs = set(latest.loc[latest["ORG_TYPE"] == "ICB", "ORG_CODE"])
+    assert len(icbs) == 42
+    assert ICB_CODES_RETIRED_2026_06 <= icbs, "codes marked retired were not in March"
+    assert not (ICB_CODES_INTRODUCED_2026_06 & icbs), "codes marked new already existed in March"
+    assert set(mapping_mar["ICB_CODE"]) == icbs
+    # The ICB set is stable across all 13 Era-A periods - the churn is at the boundary only.
+    per_period = nhs_rate_mar[nhs_rate_mar["ORG_TYPE"] == "ICB"].groupby("ACH_DATE")["ORG_CODE"].agg(set)
+    assert all(codes == icbs for codes in per_period)
+
+
+def test_sub_icb_reassignments_match_the_march_mapping_file(mapping_mar, mapping):
+    old_parent = (mapping_mar[["SUB_ICB_LOCATION_CODE", "ICB_CODE"]].drop_duplicates()
+                  .set_index("SUB_ICB_LOCATION_CODE")["ICB_CODE"])
+    new_parent = (mapping[["SUB_ICB_LOCATION_CODE", "ICB_CODE"]].drop_duplicates()
+                  .set_index("SUB_ICB_LOCATION_CODE")["ICB_CODE"])
+    for sub, (old, _) in SUB_ICB_ICB_REASSIGNMENTS_2026_06.items():
+        assert old_parent.get(sub) == old, f"Sub-ICB {sub}: March mapping says {old_parent.get(sub)}"
+    # Completeness: every Sub-ICB in BOTH releases whose parent changed is in the table,
+    # and nothing that kept its parent is.
+    both = old_parent.index.intersection(new_parent.index)
+    changed = {s for s in both if old_parent[s] != new_parent[s]}
+    assert changed == set(SUB_ICB_ICB_REASSIGNMENTS_2026_06)
+    for s in set(both) - changed:
+        assert new_icb_for_sub_icb(s, old_parent[s]) == new_parent[s]
+
+
+def test_sub_icb_churn_old_side(nhs_rate_mar, mapping_mar):
+    latest = nhs_rate_mar[nhs_rate_mar["ACH_DATE"] == "31-Mar-26"]
+    subs = set(latest.loc[latest["ORG_TYPE"] == "SUB_ICB_LOC", "ORG_CODE"])
+    assert len(subs) == 106
+    assert SUB_ICB_CODES_RETIRED_2026_06 <= subs
+    assert not (SUB_ICB_CODES_INTRODUCED_2026_06 & subs)
+    # The retired Sub-ICB's parent was itself retired - which is why that ICB has no
+    # observable successor in icb_successors().
+    parent = mapping_mar.loc[mapping_mar["SUB_ICB_LOCATION_CODE"] == "D4U1Y", "ICB_CODE"].unique()
+    assert len(parent) == 1 and parent[0] in ICB_CODES_RETIRED_2026_06
+
+
+def test_ltla_reissue_happens_at_2025_08_inside_the_march_release(la_rate_mar):
+    ltla = la_rate_mar[la_rate_mar["ORG_TYPE"] == "LTLA"].copy()
+    ltla["period"] = period(ltla["ACH_DATE"])
+    by_period = ltla.groupby("period")["ONS_CODE"].agg(set).sort_index()
+    assert len(by_period) == 13
+    assert all(len(codes) == 296 for codes in by_period)
+    old, new = set(LTLA_ONS_CODE_REISSUES), set(LTLA_ONS_CODE_REISSUES.values())
+    for p, codes in by_period.items():
+        if p < "2025-08":
+            assert old <= codes and not (new & codes), p
+        else:
+            assert new <= codes and not (old & codes), p
+    # After canonicalising, the LTLA set is identical in every period.
+    canonical = {frozenset(canonical_ltla_ons_code(c) for c in codes) for codes in by_period}
+    assert len(canonical) == 1
