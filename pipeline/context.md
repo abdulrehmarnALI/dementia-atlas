@@ -90,6 +90,19 @@ Then, and only then, gold and the app build.
 - **Practice→hierarchy joins are left joins with an `unmapped` flag**, never inner joins. An inner
   join silently drops practices that closed between the reporting period and the mapping extract
   date.
+- **Era B's vocabulary is the silver vocabulary.** Era-A `Measure` strings are decoded *into*
+  Era B's `MEASURE / BREAKDOWN / AGE / GENDER / ETHNICITY / DEMENTIA_TYPE / RESIDENTIAL_TYPE`
+  tokens (`src/measure_crosswalk.py`), not the other way round. Era-A totals that Era B doesn't
+  publish as a row (all-age register, 65+ register, all-age list size) get `breakdown = N/A`.
+- **Any sum over a suppressed cell is itself suppressed.** `value_state` propagates through
+  derived rows and aggregates (`src/derived_rows.py::sum_with_state`); silver never publishes a
+  partial sum as if it were a total.
+- **Aggregation by summing Sub-ICBs is validated only for register / list-size measures.** Era A
+  shows England = Σ Regions exactly and ICB = Σ Sub-ICBs exactly for `DEMENTIA_REGISTER`,
+  `DEMENTIA_REGISTER_65_PLUS` and `PAT_LIST`, but the event-type measures (incidence, delirium,
+  young onset, palliative care, comorbidities, MCI) differ from the sum by up to ±15 patients in
+  both directions. Computed Era-B aggregates for those must carry a "computed" marker; whether
+  the Atlas shows them at all is an open decision (`NOW.md`).
 
 ## Known open questions
 
@@ -103,6 +116,11 @@ Carried from findings §10 — these are genuinely unresolved, not homework some
 4. What is NHS England's archive retention policy for past PCDD publications? Era B's
    single-month model makes the Atlas dependent on every month staying downloadable — if old
    releases disappear, the ingestion schedule becomes non-negotiable.
+5. Why don't Era A's published ICB figures for event-type measures equal the sum of their
+   Sub-ICBs (see decisions above)? Small, symmetric, unsuppressed gaps — the publisher appears
+   to compute each level independently. Not answerable from the data.
+6. What does `*` mean in the Era-A practice-level files? They publish 0 and 1–4 alongside it,
+   so it isn't the Sub-ICB files' "0–4 suppressed" rule, and neither dictionary says.
 
 ## Add to this file when...
 

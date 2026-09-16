@@ -39,3 +39,29 @@ is a skimmable log, not a transcript._
 - Next: NOW.md item 1 (Era-A measure crosswalk) - but it needs the Era-A raw files locally to
   be testable, so item 4 (validate Era-A aggregates) has the same blocker; item 2 (value/
   metadata schema) is doable with June 2026 data alone.
+
+### 2026-09-16 - Measure crosswalk, silver value schema, derived rows, aggregation evidence
+
+- Committed and pushed last session's org crosswalk plus the context/QA files, then extended
+  its tests to re-derive the Era-A side from the March 2026 release that landed since: the 23
+  Sub-ICB reassignments are provably the complete set of parent changes between the two
+  mapping files, and D4U1Y's parent ICB was itself retired (explains why QNQ has no successor).
+- Built `src/measure_crosswalk.py`: Era-A (family, Measure) -> Era B's MEASURE/BREAKDOWN/
+  AGE/GENDER/... shape, Era-B tokens as the silver vocabulary, PAT_LIST gender-casing fix, and
+  a cross-era comparability class per (measure, breakdown). Decoded 65+ register sums tie to
+  the published headline in 106/106 Sub-ICBs in both eras.
+- Built `src/silver_schema.py` (value_raw/value_num/value_state, DQ flag, three date
+  spellings, era + dictionary version, SILVER_COLUMNS) and `src/derived_rows.py` (drop
+  published ALL_AGED_* rows, recompute Female + Male with suppression propagation; 8,268/8,268
+  cells tie).
+- Evidence for the aggregation rule in `tests/test_aggregation_evidence.py`: England = sum of
+  Regions exactly everywhere; ICB = sum of Sub-ICBs exactly ONLY for register/list-size
+  measures; INCIDENCE, DELIRIUM, YOUNG_ONSET, PALLIATIVE, COMORBIDITIES and MCI are off by up to
+  +/-15 patients (<= 5.3%) in both directions with no suppression involved. Parked as a decision.
+- Found, not expected: the practice-level Era-A files (now on disk) publish 0 and 1-4 next to
+  '*', so their suppression rule is not the 0-4 rule; a '.' missing token (12 PAT_LIST cells)
+  the notebook never saw, treated as blank; dates come in three spellings in one release.
+- Touched: src/{measure_crosswalk,silver_schema,derived_rows}.py, tests/ (60 tests, all pass),
+  NOW.md, context.md. Nine commits, pushed.
+- Next: the silver loader (NOW.md item 1), then hierarchy aggregation once the "computed
+  aggregates for noisy measures" decision is made.
