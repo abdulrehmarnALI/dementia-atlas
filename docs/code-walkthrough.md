@@ -86,7 +86,7 @@ different meanings, and a new one should stop the build, not vanish.
    and the *published* code in `ons_code` (so nothing is lost).
 4. The 2026-04 ICB reorganisation. This is the part to read slowly:
    - Old ICB → new ICB is **many-to-many** (QJG and QM7 each split across two new ICBs), so there
-     is no ICB-to-ICB rename table. The authoritative record is `SUB_ICB_ICB_REASSIGNMENTS_2026_06`:
+     is no ICB-to-ICB rename table. The authoritative record is `SUB_ICB_ICB_REASSIGNMENTS_2026_04`:
      for each of the 23 Sub-ICBs whose parent changed, `(old_icb, new_icb)`.
    - `icb_successors(old)` derives "which new ICBs absorbed this old one" from that table; it can
      return several codes, or none (QNQ's only Sub-ICB was itself closed).
@@ -99,10 +99,10 @@ different meanings, and a new one should stop the build, not vanish.
      is the one function the app layer should call: it answers "from what period is this Sub-ICB's
      history not comparable with its present?"
 
-**Naming note.** The ICB-reorg constants carry a `_2026_06` suffix (the release where the change
-was first *seen*) while the Sub-ICB ones carry `_2026_04` (when it legally *happened*, per ODS).
-Both refer to the same event; `ICB_REORG_EFFECTIVE` and `ICB_REORG_FIRST_OBSERVED_RELEASE` spell out
-the distinction.
+**Naming note.** Every reorganisation constant is suffixed `_2026_04` — the date the change legally
+took effect (per ODS). The data only *shows* it from the June 2026 release, because April and May
+2026 aren't held; `ICB_REORG_FIRST_OBSERVED_RELEASE` records that. Sub-ICB codes in the
+reassignment table are keyed by their *pre*-reorg parent.
 
 ---
 

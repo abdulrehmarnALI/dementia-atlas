@@ -23,14 +23,14 @@ sys.path.insert(0, str(PIPELINE_DIR))
 from src.org_crosswalk import (  # noqa: E402
     ENGLAND_ODS_CODE,
     ENGLAND_ONS_CODE,
-    ICB_CODES_INTRODUCED_2026_06,
-    ICB_CODES_RETIRED_2026_06,
+    ICB_CODES_INTRODUCED_2026_04,
+    ICB_CODES_RETIRED_2026_04,
     LTLA_ONS_CODE_REISSUES,
     ORG_LEVEL_BY_ORG_TYPE,
     SUB_ICB_BOUNDARY_BREAKS_2026_04,
-    SUB_ICB_CODES_INTRODUCED_2026_06,
-    SUB_ICB_CODES_RETIRED_2026_06,
-    SUB_ICB_ICB_REASSIGNMENTS_2026_06,
+    SUB_ICB_CODES_INTRODUCED_2026_04,
+    SUB_ICB_CODES_RETIRED_2026_04,
+    SUB_ICB_ICB_REASSIGNMENTS_2026_04,
     SUB_ICB_SUCCESSORS_2026_04,
     canonical_ltla_ons_code,
     icb_successors,
@@ -184,14 +184,14 @@ def test_canonical_ltla_ons_code_is_identity_except_for_the_reissued_pair(la_rat
 
 
 # --------------------------------------------------------------------------------------
-# ICB reorganisation (2026-06)
+# ICB reorganisation (2026-04, first seen in the 2026-06 release)
 # --------------------------------------------------------------------------------------
 
 def test_june_2026_icb_set_reflects_the_reorganisation(nhs_rate, mapping):
     icbs = set(nhs_rate.loc[nhs_rate["ORG_TYPE"] == "ICB", "ORG_CODE"])
     assert len(icbs) == 36
-    assert ICB_CODES_INTRODUCED_2026_06 <= icbs, "new ICB codes missing from June release"
-    assert not (ICB_CODES_RETIRED_2026_06 & icbs), "retired ICB codes still in June release"
+    assert ICB_CODES_INTRODUCED_2026_04 <= icbs, "new ICB codes missing from June release"
+    assert not (ICB_CODES_RETIRED_2026_04 & icbs), "retired ICB codes still in June release"
     # The mapping file agrees with the rate file on the ICB universe.
     assert set(mapping["ICB_CODE"]) - {"NULL"} == icbs
 
@@ -201,21 +201,21 @@ def test_sub_icb_reassignments_match_the_june_mapping_file(mapping):
     pairs = (mapping[["SUB_ICB_LOCATION_CODE", "ICB_CODE"]]
              .drop_duplicates()
              .set_index("SUB_ICB_LOCATION_CODE")["ICB_CODE"])
-    for sub, (_, new) in SUB_ICB_ICB_REASSIGNMENTS_2026_06.items():
+    for sub, (_, new) in SUB_ICB_ICB_REASSIGNMENTS_2026_04.items():
         assert pairs.get(sub) == new, f"Sub-ICB {sub}: mapping says {pairs.get(sub)}, crosswalk says {new}"
 
 
 def test_sub_icb_code_churn_at_the_boundary(sub_icb):
     codes = set(sub_icb["ODS_CODE"])
     assert len(codes) == 106
-    assert SUB_ICB_CODES_INTRODUCED_2026_06 <= codes
-    assert not (SUB_ICB_CODES_RETIRED_2026_06 & codes)
+    assert SUB_ICB_CODES_INTRODUCED_2026_04 <= codes
+    assert not (SUB_ICB_CODES_RETIRED_2026_04 & codes)
 
 
 def test_every_reassignment_lands_on_a_new_icb_and_leaves_a_retired_one():
-    for sub, (old, new) in SUB_ICB_ICB_REASSIGNMENTS_2026_06.items():
-        assert old in ICB_CODES_RETIRED_2026_06, f"{sub}: old parent {old} not marked retired"
-        assert new in ICB_CODES_INTRODUCED_2026_06, f"{sub}: new parent {new} not a new code"
+    for sub, (old, new) in SUB_ICB_ICB_REASSIGNMENTS_2026_04.items():
+        assert old in ICB_CODES_RETIRED_2026_04, f"{sub}: old parent {old} not marked retired"
+        assert new in ICB_CODES_INTRODUCED_2026_04, f"{sub}: new parent {new} not a new code"
 
 
 def test_icb_successor_lookups():
@@ -262,8 +262,8 @@ def test_march_2026_icb_set_is_the_pre_reorg_universe(nhs_rate_mar, mapping_mar)
     latest = nhs_rate_mar[nhs_rate_mar["ACH_DATE"] == "31-Mar-26"]
     icbs = set(latest.loc[latest["ORG_TYPE"] == "ICB", "ORG_CODE"])
     assert len(icbs) == 42
-    assert ICB_CODES_RETIRED_2026_06 <= icbs, "codes marked retired were not in March"
-    assert not (ICB_CODES_INTRODUCED_2026_06 & icbs), "codes marked new already existed in March"
+    assert ICB_CODES_RETIRED_2026_04 <= icbs, "codes marked retired were not in March"
+    assert not (ICB_CODES_INTRODUCED_2026_04 & icbs), "codes marked new already existed in March"
     assert set(mapping_mar["ICB_CODE"]) == icbs
     # The ICB set is stable across all 13 Era-A periods - the churn is at the boundary only.
     per_period = nhs_rate_mar[nhs_rate_mar["ORG_TYPE"] == "ICB"].groupby("ACH_DATE")["ORG_CODE"].agg(set)
@@ -275,13 +275,13 @@ def test_sub_icb_reassignments_match_the_march_mapping_file(mapping_mar, mapping
                   .set_index("SUB_ICB_LOCATION_CODE")["ICB_CODE"])
     new_parent = (mapping[["SUB_ICB_LOCATION_CODE", "ICB_CODE"]].drop_duplicates()
                   .set_index("SUB_ICB_LOCATION_CODE")["ICB_CODE"])
-    for sub, (old, _) in SUB_ICB_ICB_REASSIGNMENTS_2026_06.items():
+    for sub, (old, _) in SUB_ICB_ICB_REASSIGNMENTS_2026_04.items():
         assert old_parent.get(sub) == old, f"Sub-ICB {sub}: March mapping says {old_parent.get(sub)}"
     # Completeness: every Sub-ICB in BOTH releases whose parent changed is in the table,
     # and nothing that kept its parent is.
     both = old_parent.index.intersection(new_parent.index)
     changed = {s for s in both if old_parent[s] != new_parent[s]}
-    assert changed == set(SUB_ICB_ICB_REASSIGNMENTS_2026_06)
+    assert changed == set(SUB_ICB_ICB_REASSIGNMENTS_2026_04)
     for s in set(both) - changed:
         assert new_icb_for_sub_icb(s, old_parent[s]) == new_parent[s]
 
@@ -290,12 +290,12 @@ def test_sub_icb_churn_old_side(nhs_rate_mar, mapping_mar):
     latest = nhs_rate_mar[nhs_rate_mar["ACH_DATE"] == "31-Mar-26"]
     subs = set(latest.loc[latest["ORG_TYPE"] == "SUB_ICB_LOC", "ORG_CODE"])
     assert len(subs) == 106
-    assert SUB_ICB_CODES_RETIRED_2026_06 <= subs
-    assert not (SUB_ICB_CODES_INTRODUCED_2026_06 & subs)
+    assert SUB_ICB_CODES_RETIRED_2026_04 <= subs
+    assert not (SUB_ICB_CODES_INTRODUCED_2026_04 & subs)
     # The retired Sub-ICB's parent was itself retired - which is why that ICB has no
     # observable successor in icb_successors().
     parent = mapping_mar.loc[mapping_mar["SUB_ICB_LOCATION_CODE"] == "D4U1Y", "ICB_CODE"].unique()
-    assert len(parent) == 1 and parent[0] in ICB_CODES_RETIRED_2026_06
+    assert len(parent) == 1 and parent[0] in ICB_CODES_RETIRED_2026_04
 
 
 def test_ltla_reissue_happens_at_2025_08_inside_the_march_release(la_rate_mar):

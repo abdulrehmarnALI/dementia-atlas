@@ -10,7 +10,8 @@ Everything in this module traces to evidence in ``notebooks/03_cross_release_qa.
    in its ONS_CODE column; every other file uses the real ONS code ``E92000001``.
 3. The LTLA ONS code reissue at 2025-08: two authorities keep existing but are
    republished under new ONS codes mid-series.
-4. The ICB reorganisation at the 2026-06 era boundary: 42 ICBs become 36, and the
+4. The ICB reorganisation legally effective 2026-04 (first seen in the 2026-06 release):
+   42 ICBs become 36, and the
    old -> new relationship is many-to-many (two old ICBs split across new ones), so
    the reliable crosswalk is per Sub-ICB, not per ICB.
 """
@@ -100,7 +101,7 @@ def canonical_ltla_ons_code(code: str) -> str:
 
 
 # --------------------------------------------------------------------------------------
-# 4. ICB reorganisation (2026-06 era boundary)
+# 4. ICB reorganisation (effective 2026-04; first observed in the 2026-06 release)
 # --------------------------------------------------------------------------------------
 
 # Legally effective 1 April 2026 (closures dated 31 March 2026) per NHS England ODS;
@@ -111,12 +112,12 @@ ICB_REORG_SOURCE = ("https://digital.nhs.uk/services/organisation-data-service/"
 ICB_REORG_EFFECTIVE = "2026-04"
 ICB_REORG_FIRST_OBSERVED_RELEASE = "2026-06"
 
-ICB_CODES_RETIRED_2026_06 = frozenset({
+ICB_CODES_RETIRED_2026_04 = frozenset({
     "QH8", "QHG", "QJG", "QM7", "QMJ", "QMM",
     "QNQ", "QNX", "QRV", "QU9", "QUE", "QXU",
 })
 
-ICB_CODES_INTRODUCED_2026_06 = frozenset({
+ICB_CODES_INTRODUCED_2026_04 = frozenset({
     "D7T5G", "S0E4D", "S1Y5D", "S9B9J", "T6Y0W", "Z9B2Z",
 })
 
@@ -125,8 +126,8 @@ ICB_CODES_INTRODUCED_2026_06 = frozenset({
 # were split across three successors - so U2G6B is NOT D4U1Y under a new code and the
 # two must never be joined as one series. Decision recorded in docs/context.md; source
 # ICB_REORG_SOURCE; practice counts from the 2026-03 vs 2026-06 mapping snapshots.
-SUB_ICB_CODES_RETIRED_2026_06 = frozenset({"D4U1Y"})
-SUB_ICB_CODES_INTRODUCED_2026_06 = frozenset({"U2G6B"})
+SUB_ICB_CODES_RETIRED_2026_04 = frozenset({"D4U1Y"})
+SUB_ICB_CODES_INTRODUCED_2026_04 = frozenset({"U2G6B"})
 
 SUB_ICB_SUCCESSORS_2026_04: dict[str, dict[str, int]] = {
     # closed code -> {successor: practices received}
@@ -146,16 +147,16 @@ SUB_ICB_BOUNDARY_BREAKS_2026_04: dict[str, str] = {
 def sub_icb_series_break(code: str) -> str | None:
     """The period from which a Sub-ICB series is not comparable with its own past
     (``"2026-04"``), or None if the organisation is geographically stable."""
-    if code in SUB_ICB_BOUNDARY_BREAKS_2026_04 or code in SUB_ICB_CODES_RETIRED_2026_06:
+    if code in SUB_ICB_BOUNDARY_BREAKS_2026_04 or code in SUB_ICB_CODES_RETIRED_2026_04:
         return ICB_REORG_EFFECTIVE
     return None
 
-# The 23 Sub-ICBs whose parent ICB changed at 2026-06, as {sub_icb: (old_icb, new_icb)}.
+# The 23 Sub-ICBs whose parent ICB changed at 2026-04, as {sub_icb: (old_icb, new_icb)}.
 # This is the authoritative form of the reorganisation: old ICB -> new ICB is
 # many-to-many (QJG splits into D7T5G and T6Y0W; QM7 into D7T5G and S1Y5D), so any
-# ICB-level series crossing 2026-06 compares different organisations and must be
+# ICB-level series crossing 2026-04 compares different organisations and must be
 # rebuilt from Sub-ICBs instead.
-SUB_ICB_ICB_REASSIGNMENTS_2026_06: dict[str, tuple[str, str]] = {
+SUB_ICB_ICB_REASSIGNMENTS_2026_04: dict[str, tuple[str, str]] = {
     "06Q": ("QH8", "D7T5G"),
     "07G": ("QH8", "D7T5G"),
     "99E": ("QH8", "D7T5G"),
@@ -191,17 +192,17 @@ def icb_successors(old_icb_code: str) -> frozenset[str]:
     sides of the boundary in the local data, so it has no observable successor.
     """
     return frozenset(
-        new for old, new in SUB_ICB_ICB_REASSIGNMENTS_2026_06.values() if old == old_icb_code
+        new for old, new in SUB_ICB_ICB_REASSIGNMENTS_2026_04.values() if old == old_icb_code
     )
 
 
 def new_icb_for_sub_icb(sub_icb_code: str, old_icb_code: str) -> str:
-    """The post-2026-06 parent ICB for a Sub-ICB, given its pre-reorg parent.
+    """The post-2026-04 parent ICB for a Sub-ICB, given its pre-reorg parent.
 
     Falls back to the old code when the Sub-ICB was not reassigned - most Sub-ICBs
     kept their parent ICB through the reorganisation.
     """
-    reassignment = SUB_ICB_ICB_REASSIGNMENTS_2026_06.get(sub_icb_code)
+    reassignment = SUB_ICB_ICB_REASSIGNMENTS_2026_04.get(sub_icb_code)
     if reassignment is None:
         return old_icb_code
     old, new = reassignment
