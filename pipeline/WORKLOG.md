@@ -83,3 +83,21 @@ is a skimmable log, not a transcript._
   tests/test_silver_loader.py (70 tests total, all pass), NOW.md, PROGRESS.md.
 - Next: hierarchy aggregation (NOW.md item 1) once the noisy-measures decision is made; mapping
   snapshots and the Era-B practice file are unblocked and could go first.
+
+### 2026-09-16 (later still) - Decisions recorded; mapping + practice loaders
+
+- Q3 (U2G6B vs D4U1Y) recorded as NOT continuous, with the ODS source. Local mapping
+  snapshots show D4U1Y's 66 practices went three ways: U2G6B 41, D9Y0V 14, 92A 11 - 92A was
+  not in Sunshine's brief. Those 66 are the only practices that changed Sub-ICB, so D9Y0V,
+  92A and U2G6B all carry a 2026-04 series-break flag (`sub_icb_series_break`).
+- Q2: practice-level history starts June 2026. All three Era-A practice files are on disk in
+  both releases (anti-psy, ass-plans, data-date) - not just data-date - and stay out of scope.
+- Q1: measured computed-vs-published error per measure per level, both Era-A releases ->
+  docs/aggregation_error_era_a.md (+csv). Error does NOT track suppression; it grows ~sqrt(n)
+  with the number of Sub-ICBs summed and is largest relatively for INCIDENCE. No rule chosen.
+- Moved context.md to docs/context.md (where CLAUDE.md already pointed); added the decisions.
+- Built src/mapping_loader.py (dimension table, NULL sentinel -> unmapped flag, names
+  stripped) and loaded the Era-B practice file into silver (42,616 rows, age decoded from the
+  breakdown name, comparability era_b_only). 81 tests pass. Committed, not pushed.
+- Next: mapping table into the build, series breaks on rows, aggregation once a display
+  rule is chosen.

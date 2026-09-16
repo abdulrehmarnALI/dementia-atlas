@@ -17,13 +17,16 @@ No dates — WORKLOG.md has those. Tick things off here as they land._
 - [x] Checked whether summing Sub-ICBs reproduces Era A's published ICB / Region / England figures: exact for register-type measures, approximately (±15) for the rest — `tests/test_aggregation_evidence.py`
 - [x] Silver loader: all three releases → one observation frame, revision check, latest-release-wins, Parquet in/out — `src/silver_loader.py`
 - [x] Write the silver Parquet to `data/processed/silver/` — `python -m src.build`
+- [x] Decided: `U2G6B` is not `D4U1Y` recoded — Frimley's practices split three ways (U2G6B 41, D9Y0V 14, 92A 11); series-break flags for all three at 2026-04 — `src/org_crosswalk.py`, `docs/context.md`
+- [x] Decided: practice-level history starts June 2026; Era-A practice files stay on disk but out of scope
+- [x] Measured computed-vs-published aggregate error per measure per level for Era A — `docs/aggregation_error_era_a.md`
+- [x] Mapping snapshots (practice → Sub-ICB → ICB → Region) load as a dimension table with an `unmapped` flag — `src/mapping_loader.py`
+- [x] Era-B practice file loads into the observation frame — `src/silver_loader.py`
 
 ## Next
 
-- [ ] Hierarchy aggregation for Era-B measures (Sub-ICB → ICB → Region → England) with suppression propagation and a "computed" marker — waits on the "noisy measures" decision in NOW.md
-- [ ] Load the mapping snapshots (practice → Sub-ICB → ICB → Region) so practice rows can be placed in the hierarchy
-- [ ] Load the Era-B practice file (`pcdem-practice`)
-- [ ] Era-A practice-level files (`prac-anti-psy`, `prac-ass-plans`) — waits on the suppression-semantics decision in NOW.md
+- [ ] Hierarchy aggregation for Era-B measures (Sub-ICB → ICB → Region → England) with suppression propagation and a "computed" marker — waits on the display-rule decision (see the error table)
+- [ ] Write the mapping table to Parquet in the build and hand its hierarchy to the aggregation step
 - [ ] Back-fill April and May 2026 once those publications are sourced
-- [ ] Mark comparability on every row in a way the app can use directly (series-break flags per measure and per organisation)
+- [ ] Put series breaks on rows the app can read directly: per-organisation (2026-04 reorg, D9Y0V/92A/U2G6B boundary changes, LTLA reissue) and per-measure (comparability class)
 - [ ] Gold: app-ready tables into PostGIS — not before all of the above

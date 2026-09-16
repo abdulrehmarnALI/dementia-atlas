@@ -14,15 +14,13 @@ _(empty — pick the top item below to start)_
    `tests/test_aggregation_evidence.py` (exact for register/list-size measures, approximate for
    the rest — see "Needs a decision"). Needs a per-period Sub-ICB → ICB → Region hierarchy:
    Era A has it on the age/sex file rows, Era B only in the mapping snapshot.
-2. Load the mapping snapshots (practice → Sub-ICB → ICB → Region, per release) as a silver
-   dimension table, left-joinable with an `unmapped` flag (context.md decision).
-3. Load the Era-B practice file (`pcdem-practice`) into the observation frame — `MEASURE` is a
-   roll-up of `BREAKDOWN` there, so the breakdown names (`DEMENTIA_REGISTER_0_64`, …) need
-   decoding into age tokens the same way Era-A strings do.
-4. Era-A practice-level crosswalk (`pcdem-prac-anti-psy`, `pcdem-prac-ass-plans`): their
-   `Measure` names line up with Era B's `PRESCRIBING` / `REVIEWS` breakdowns and the practice
-   file's `DEMENTIA_REGISTER_0_64` / `PAT_LIST_65_PLUS` (mixed case aside). Blocked on the
-   suppression-semantics decision below.
+2. Write the mapping dimension table to Parquet alongside the observations in `src/build.py`
+   (`mapping_loader` exists and is tested; the build doesn't call it yet), and attach the
+   per-release hierarchy the aggregation step will need.
+3. Surface series breaks on rows: `org_crosswalk.sub_icb_series_break()` and the ICB reorg
+   give per-organisation breaks at 2026-04; the measure crosswalk gives per-measure
+   comparability. Decide how these land on silver rows (a `series_break_from` column, or a
+   separate breaks table) so the app never has to re-derive them.
 
 ## Blocked / needs Sunshine's input
 
@@ -31,25 +29,13 @@ _(empty — pick the top item below to start)_
   `silver_schema.publication_era()` deliberately refuses those two months until a file is seen.
 - Whether Era-B is ever revised is untestable until a second Era-B release exists (QA notebook
   §11, Q1) — nothing to do here yet, just don't assume "latest release wins" logic gets exercised.
-- Docs mismatch: CLAUDE.md points at `../docs/context.md` and `../docs/findings.md` §1–§10, but
-  context.md lives at `pipeline/context.md` and findings.md has no numbered sections (it only
-  covers the June 2026 structure). The numbered-section evidence is in
-  `notebooks/03_cross_release_qa.ipynb`. Worth exporting the notebook's findings into
-  docs/findings.md, or repointing CLAUDE.md.
+- Docs mismatch: CLAUDE.md points at `../docs/findings.md` §1–§10, but findings.md has no
+  numbered sections (it only covers the June 2026 structure). The numbered-section evidence is
+  in `notebooks/03_cross_release_qa.ipynb`. Worth exporting the notebook's findings into
+  docs/findings.md. (context.md now lives at docs/context.md, where CLAUDE.md points.)
 
 ## Needs a decision (don't invent an answer — add it here and ask)
 
-- Is Sub-ICB `U2G6B` (new at 2026-06) the same organisation as retired `D4U1Y` under a new code,
-  or a genuinely different Sub-ICB? Local data can't settle it (D4U1Y's parent ICB was itself
-  retired). Decides whether those two series may be joined across the era boundary. The
-  crosswalk currently treats them as NOT continuous.
-- Computed aggregates for non-register measures: in Era A, published ICB figures for INCIDENCE,
-  DELIRIUM_12M, YOUNG_ONSET, PALLIATIVE_CARE, COMORBIDITIES and MCI differ from the sum of their
-  Sub-ICBs by up to ±11–15 patients (≤ 5.3% of the figure), in both directions, with no
-  suppression to explain it; MCI also differs at Region level. Register/list-size measures sum
-  exactly. Should the Atlas show computed Era-B ICB/Region aggregates for the noisy measures at
-  all (flagged "computed, ±5%"), or only for the measures where summing is provably exact?
-- Practice-level suppression semantics: the Era-A practice files publish 0 and 1–4 freely
-  alongside `*` (70% of antipsychotic cells are `*`), so `*` there is NOT small-number
-  suppression and neither dictionary explains it. Decide whether Era-A practice-level history
-  is in scope for silver before anyone crosswalks those files.
+- Display rule for computed aggregates: the measured computed-vs-published error per measure per
+  level is in `docs/aggregation_error_era_a.md` (CSV alongside). Sunshine to decide the display
+  rule before hierarchy aggregation is implemented (NOW.md item 1).
