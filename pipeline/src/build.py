@@ -25,7 +25,7 @@ import pandas as pd
 from .aggregation import fill_missing_aggregates
 from .mapping_loader import hierarchy, load_mapping
 from .series_breaks import build_series_breaks
-from .silver_loader import build_silver, classify_file, resolve_latest_release, write_silver
+from .silver_loader import _assert_unique_key, build_silver, classify_file, resolve_latest_release, write_silver
 
 PIPELINE_DIR = Path(__file__).resolve().parents[1]
 RAW_ROOT = PIPELINE_DIR / "data" / "raw" / "pcdd"
@@ -62,6 +62,7 @@ def main(argv: list[str] | None = None, raw_root: Path = RAW_ROOT, out_dir: Path
     hier = hierarchy(mapping)
     aggregates = fill_missing_aggregates(published, hier)
     silver = pd.concat([published, aggregates], ignore_index=True)
+    _assert_unique_key(silver, "observations + aggregates")
     latest = resolve_latest_release(silver)
     breaks = build_series_breaks(published)
 

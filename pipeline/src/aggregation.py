@@ -88,13 +88,16 @@ def aggregate_sub_icbs(df: pd.DataFrame, hierarchy: pd.DataFrame,
 
 
 def fill_missing_aggregates(df: pd.DataFrame, hierarchy: pd.DataFrame) -> pd.DataFrame:
-    """The aggregates NHS England did *not* publish: computed rows whose observation
-    key (release, period, organisation, measure, breakdown, dimensions) has no
-    published row in ``df``."""
+    """The aggregates the observation frame does *not* already have: computed rows
+    whose key (release, period, organisation, measure, breakdown, dimensions) matches
+    no existing row - published *or* derived. In Era A the all-sex row at ICB /
+    region / England is derived from the published Female + Male rows at that level,
+    and that row wins over a sum of Sub-ICBs (the publisher's own figures carry
+    per-level noise; see docs/aggregation_error_era_a.md)."""
     computed = aggregate_sub_icbs(df, hierarchy)
     key = ["source_release", *OBSERVATION_KEY]
-    published = df.loc[~df["is_derived"].astype(bool), key].drop_duplicates()
-    merged = computed.merge(published, on=key, how="left", indicator=True)
+    existing = df[key].drop_duplicates()
+    merged = computed.merge(existing, on=key, how="left", indicator=True)
     return conform(merged[merged["_merge"] == "left_only"].drop(columns=["_merge"]).reset_index(drop=True))
 
 

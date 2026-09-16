@@ -80,11 +80,16 @@ def test_bounds_arithmetic_against_published_where_inputs_were_suppressed(compar
     assert excursion.max() <= 41 and excursion.quantile(0.95) <= 11
 
 
-def test_fill_missing_only_adds_what_was_not_published(silver, hier):
+def test_fill_missing_only_adds_what_the_frame_does_not_already_have(silver, hier):
     filled = fill_missing_aggregates(silver, hier)
     key = ["source_release", *OBSERVATION_KEY]
-    published = silver.loc[~silver["is_derived"], key]
-    assert filled.merge(published, on=key).empty
+    assert filled.merge(silver[key], on=key).empty          # nothing published OR derived is duplicated
+    assert not pd.concat([silver, filled]).duplicated(key).any()
+    # Era A: the all-sex MCI row at England comes from the published Female + Male
+    # England rows, so no Sub-ICB-summed version is added for it.
+    era_a_mci_all = filled[(filled["source_release"] == "2026-03") & (filled["measure"] == "MCI")
+                           & (filled["gender"] == "ALL") & (filled["org_level"] == "country")]
+    assert era_a_mci_all.empty
     assert filled["is_derived"].all() and filled["source_file"].isna().all()
     assert list(filled.columns) == list(SILVER_COLUMNS)
     # Era B: everything but the rate file needs computing; Era A: the four
