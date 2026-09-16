@@ -4,8 +4,9 @@
     python -m src.load_postgis postgresql://...   # or given explicitly
 
 Applies ``db/schema.sql`` (drops and recreates the gold schema), COPYs every gold
-table in, builds the Sub-ICB geometries from their GeoJSON, and dissolves ICB and
-NHS-region outlines from them. Idempotent: run it after every ``src.gold`` build.
+table in, builds geometries from their GeoJSON plus a simplified ``geom_web`` for
+the browser, and practice points from lat / lon. Idempotent: run it after every
+``src.gold`` build.
 
 To run a database locally: ``docker compose -f infra/docker-compose.yml up -d`` and
 ``DATABASE_URL=postgresql://atlas:atlas@localhost:5434/atlas`` (5434, not 5432 - see
@@ -30,43 +31,39 @@ _LOAD_COLUMNS = {
                      "first_period", "last_period", "is_current", "series_break_from"],
     "measure": ["measure_key", "measure", "breakdown", "age", "gender", "ethnicity", "dementia_type",
                 "residential_type", "description", "unit", "is_additive", "comparability"],
-    "period": ["period_end", "period", "publication_era", "source_release", "dictionary_version", "n_rows"],
+    "period": ["period_end", "period", "publication_era", "source_release", "dictionary_version",
+               "boundary_version_nhs", "n_rows"],
     "observation": ["period_end", "org_level", "org_code", "measure_key", "value", "value_state", "value_lower",
                     "value_upper", "is_derived", "dq_flag", "comparability", "source_release"],
     "diagnosis_rate": ["period_end", "org_level", "org_code", "register_65_plus", "estimate_65_plus", "diag_rate",
                        "diag_rate_ll", "diag_rate_ul", "dq_flag"],
     "series_break": ["scope", "org_level", "org_code", "measure", "breakdown", "effective_from", "kind", "note", "source"],
     "geometry": ["org_level", "org_code", "ons_code", "name_in_boundary_file", "boundary_version", "geometry_geojson"],
+    "practice_location": ["practice_code", "practice_name", "postcode", "lat", "lon", "quality", "lsoa",
+                          "sub_icb_code", "icb_code", "region_code", "unmapped", "source_release"],
 }
 
 # Load order respects foreign keys.
-_LOAD_ORDER = ("organisation", "measure", "period", "observation", "diagnosis_rate", "series_break", "geometry")
+_LOAD_ORDER = ("organisation", "measure", "period", "observation", "diagnosis_rate", "series_break",
+               "geometry", "practice_location")
 
-_POST_LOAD_SQL = """
-UPDATE gold.geometry SET geom = ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(geometry_geojson), 4326));
+# 0.0005 degrees is roughly 35-50 m in England: invisible at any zoom the app
+# shows a whole organisation at, and cuts the BGC polygons to a fraction of their size.
+WEB_SIMPLIFY_TOLERANCE_DEG = 0.0005
 
--- ICB and NHS-region outlines dissolved from the Sub-ICBs that belong to them
--- (current hierarchy from gold.organisation).
-INSERT INTO gold.geometry (org_level, org_code, ons_code, name_in_boundary_file, boundary_version, geometry_geojson, geom)
-SELECT p.org_level, p.org_code, COALESCE(p.ons_code, p.org_code), p.name, g.boundary_version,
-       ST_AsGeoJSON(ST_Multi(ST_Union(g.geom))), ST_Multi(ST_Union(g.geom))
-FROM gold.geometry g
-JOIN gold.organisation s ON s.org_level = 'sub_icb' AND s.org_code = g.org_code
-JOIN gold.organisation p ON p.org_level = s.parent_org_level AND p.org_code = s.parent_org_code
-WHERE g.org_level = 'sub_icb'
-GROUP BY p.org_level, p.org_code, p.ons_code, p.name, g.boundary_version;
+_POST_LOAD_SQL = f"""
+UPDATE gold.geometry
+   SET geom = ST_Multi(ST_MakeValid(ST_SetSRID(ST_GeomFromGeoJSON(geometry_geojson), 4326)));
+UPDATE gold.geometry
+   SET geom_web = ST_Multi(ST_MakeValid(ST_SimplifyPreserveTopology(geom, {WEB_SIMPLIFY_TOLERANCE_DEG})));
 
-INSERT INTO gold.geometry (org_level, org_code, ons_code, name_in_boundary_file, boundary_version, geometry_geojson, geom)
-SELECT r.org_level, r.org_code, COALESCE(r.ons_code, r.org_code), r.name, g.boundary_version,
-       ST_AsGeoJSON(ST_Multi(ST_Union(g.geom))), ST_Multi(ST_Union(g.geom))
-FROM gold.geometry g
-JOIN gold.organisation i ON i.org_level = 'icb' AND i.org_code = g.org_code
-JOIN gold.organisation r ON r.org_level = i.parent_org_level AND r.org_code = i.parent_org_code
-WHERE g.org_level = 'icb'
-GROUP BY r.org_level, r.org_code, r.ons_code, r.name, g.boundary_version;
+UPDATE gold.practice_location
+   SET geom = ST_SetSRID(ST_MakePoint(lon, lat), 4326)
+ WHERE lat IS NOT NULL AND lon IS NOT NULL;
 
 ANALYZE gold.observation;
 ANALYZE gold.diagnosis_rate;
+ANALYZE gold.geometry;
 """
 
 
@@ -89,8 +86,10 @@ def load(database_url: str, gold_dir: Path = GOLD_DIR) -> dict[str, int]:
                 _copy(cur, table, frames[table])
                 counts[table] = len(frames[table])
             cur.execute(_POST_LOAD_SQL)
-            cur.execute("SELECT org_level, count(*) FROM gold.geometry GROUP BY 1 ORDER BY 1")
-            counts["geometry_by_level"] = dict(cur.fetchall())
+            cur.execute("SELECT org_level || '@' || boundary_version, count(*) FROM gold.geometry GROUP BY 1 ORDER BY 1")
+            counts["geometry_by_level_version"] = dict(cur.fetchall())
+            cur.execute("SELECT count(geom) FROM gold.practice_location")
+            counts["practice_points"] = cur.fetchone()[0]
         conn.commit()
     return counts
 

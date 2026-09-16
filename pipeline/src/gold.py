@@ -16,22 +16,25 @@ what the Atlas queries, and nothing else:
 - ``diagnosis_rate``  the headline, wide: register / estimate / rate / CI per
                       organisation-period, at every level the publisher gives it
 - ``series_break``    the breaks table, as built by ``series_breaks``
-- ``geometry``        Sub-ICB boundaries (April 2026, EPSG:4326) as GeoJSON text,
-                      joined to org_code via ONS code; ICB and region outlines are
-                      dissolved from these in PostGIS at load time
+- ``geometry``        every level's boundaries from the ONS Open Geography Portal
+                      (``boundaries``), as GeoJSON text keyed by org_code, versioned:
+                      NHS levels carry both the April 2023 (42-ICB, Era A) and April
+                      2026 sets; ``period.boundary_version_nhs`` says which applies
+- ``practice_location`` one row per GP practice with coordinates from postcodes.io
+                      (``geocode``)
 
 Everything is written as Parquet under ``data/processed/gold/``; ``load_postgis``
 pushes the same frames into PostGIS.
 """
 
-import json
-import re
 import sys
 from pathlib import Path
 
 import openpyxl
 import pandas as pd
 
+from .boundaries import load_boundaries, nhs_boundary_version
+from .geocode import practice_locations
 from .measure_crosswalk import ALL, NOT_APPLICABLE
 from .org_crosswalk import ENGLAND_ODS_CODE, ENGLAND_ONS_CODE
 from .silver_loader import classify_file, read_raw, read_silver
@@ -41,8 +44,6 @@ PIPELINE_DIR = Path(__file__).resolve().parents[1]
 RAW_ROOT = PIPELINE_DIR / "data" / "raw" / "pcdd"
 SILVER_DIR = PIPELINE_DIR / "data" / "processed" / "silver"
 GOLD_DIR = PIPELINE_DIR / "data" / "processed" / "gold"
-GEOJSON = next(iter((PIPELINE_DIR / "data" / "raw").glob("Sub_Integrated_Care_Board_Locations_*.geojson")), None)
-BOUNDARY_VERSION = "2026-04"   # April 2026 boundaries, i.e. post-reorganisation
 
 RATE_MEASURES = {
     "DEMENTIA_REGISTER_65_PLUS": "register_65_plus",
@@ -52,7 +53,8 @@ RATE_MEASURES = {
     "DIAG_RATE_65_PLUS_UL": "diag_rate_ul",
 }
 
-GOLD_TABLES = ("organisation", "measure", "period", "observation", "diagnosis_rate", "series_break", "geometry")
+GOLD_TABLES = ("organisation", "measure", "period", "observation", "diagnosis_rate", "series_break",
+               "geometry", "practice_location")
 
 
 # --------------------------------------------------------------------------------------
@@ -208,7 +210,11 @@ def period_dimension(latest: pd.DataFrame) -> pd.DataFrame:
                     dictionary_version=("dictionary_version", "first"), n_rows=("value_raw", "size"))
                .reset_index().sort_values("period_end"))
     periods["period"] = periods["period_end"].dt.strftime("%Y-%m")
-    return periods[["period_end", "period", "publication_era", "source_release", "dictionary_version", "n_rows"]].reset_index(drop=True)
+    # Which NHS boundary set to draw this period on (the app never needs to know
+    # about the reorganisation itself).
+    periods["boundary_version_nhs"] = periods["period"].map(nhs_boundary_version)
+    return periods[["period_end", "period", "publication_era", "source_release", "dictionary_version",
+                    "boundary_version_nhs", "n_rows"]].reset_index(drop=True)
 
 
 def observation_fact(latest: pd.DataFrame, measures: pd.DataFrame) -> pd.DataFrame:
@@ -237,26 +243,10 @@ def diagnosis_rate_wide(latest: pd.DataFrame) -> pd.DataFrame:
     return wide[cols].sort_values(["period_end", "org_level", "org_code"]).reset_index(drop=True)
 
 
-def sub_icb_ons_lookup(silver: pd.DataFrame) -> dict[str, str]:
-    """Every ONS code a Sub-ICB has ever been published under -> its ODS code, so a
-    boundary file keyed on either an old or a new ONS code still joins."""
-    subs = silver[(silver["org_level"] == "sub_icb") & silver["ons_code"].notna()]
-    pairs = subs[["ons_code", "org_code", "source_release"]].drop_duplicates(["ons_code", "org_code"])
-    pairs = pairs.sort_values("source_release").drop_duplicates("ons_code", keep="last")
-    return dict(zip(pairs["ons_code"], pairs["org_code"]))
-
-
-def geometry_table(geojson_path: Path, ons_lookup: dict[str, str]) -> pd.DataFrame:
-    """Sub-ICB polygons keyed by org_code, via the ONS code the boundary file uses."""
-    features = json.load(open(geojson_path, encoding="utf-8"))["features"]
-    rows = []
-    for f in features:
-        ons = f["properties"]["SICBL26CD"]
-        rows.append({"org_level": "sub_icb", "org_code": ons_lookup.get(ons, pd.NA), "ons_code": ons,
-                     "name_in_boundary_file": f["properties"]["SICBL26NM"],
-                     "boundary_version": BOUNDARY_VERSION,
-                     "geometry_geojson": json.dumps(f["geometry"], separators=(",", ":"))})
-    return pd.DataFrame(rows).sort_values("ons_code").reset_index(drop=True)
+def geometry_table(silver: pd.DataFrame, fetch: bool = True) -> pd.DataFrame:
+    """Every level's polygons keyed by org_code, versioned - see ``boundaries``.
+    Raises if any polygon fails to resolve to an organisation silver knows."""
+    return load_boundaries(silver, fetch=fetch)
 
 
 # --------------------------------------------------------------------------------------
@@ -293,7 +283,8 @@ def latest_dictionary(raw_root: Path) -> Path:
 
 
 def build_gold(silver_dir: Path = SILVER_DIR, raw_root: Path = RAW_ROOT,
-               geojson_path: Path | None = GEOJSON) -> dict[str, pd.DataFrame]:
+               fetch: bool = True) -> dict[str, pd.DataFrame]:
+    """``fetch=False`` uses only cached boundaries and geocodes (no network)."""
     silver = unify_england(read_silver(silver_dir / "pcdd_observations.parquet"))
     latest = unify_england(read_silver(silver_dir / "pcdd_latest.parquet"))
     mapping = pd.read_parquet(silver_dir / "pcdd_mapping.parquet")
@@ -309,7 +300,8 @@ def build_gold(silver_dir: Path = SILVER_DIR, raw_root: Path = RAW_ROOT,
         "observation": observation_fact(latest, measures),
         "diagnosis_rate": diagnosis_rate_wide(latest),
         "series_break": breaks,
-        "geometry": geometry_table(geojson_path, sub_icb_ons_lookup(silver)) if geojson_path else pd.DataFrame(),
+        "geometry": geometry_table(silver, fetch=fetch),
+        "practice_location": practice_locations(mapping, fetch=fetch),
     }
     return gold
 

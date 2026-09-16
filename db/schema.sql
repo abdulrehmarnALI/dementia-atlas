@@ -5,8 +5,8 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE SCHEMA IF NOT EXISTS gold;
 
-DROP TABLE IF EXISTS gold.observation, gold.diagnosis_rate, gold.geometry, gold.series_break,
-                     gold.period, gold.measure, gold.organisation CASCADE;
+DROP TABLE IF EXISTS gold.observation, gold.diagnosis_rate, gold.geometry, gold.practice_location,
+                     gold.series_break, gold.period, gold.measure, gold.organisation CASCADE;
 
 CREATE TABLE gold.organisation (
     org_level          text NOT NULL,   -- country | nhs_region | icb | sub_icb | practice | gor | utla | ltla
@@ -43,6 +43,7 @@ CREATE TABLE gold.period (
     publication_era    text NOT NULL,      -- A | B
     source_release     text NOT NULL,
     dictionary_version text NOT NULL,
+    boundary_version_nhs text NOT NULL,  -- which gold.geometry version to draw NHS levels on
     n_rows             bigint NOT NULL
 );
 
@@ -96,12 +97,34 @@ CREATE INDEX series_break_measure_idx ON gold.series_break (measure, breakdown);
 
 CREATE TABLE gold.geometry (
     org_level              text NOT NULL,
-    org_code               text,           -- NULL if the boundary file has a Sub-ICB silver has never seen
+    org_code               text NOT NULL,
     ons_code               text NOT NULL,
     name_in_boundary_file  text,
-    boundary_version       text NOT NULL,  -- YYYY-MM of the boundary set
-    geometry_geojson       text NOT NULL,
+    boundary_version       text NOT NULL,  -- YYYY-MM of the ONS boundary set; NHS levels have
+                                           -- 2023-04 (Era A, 42 ICBs) and 2026-04
+    geometry_geojson       text NOT NULL,  -- as fetched (BGC: generalised, clipped to coastline)
     geom                   geometry(MultiPolygon, 4326),
-    PRIMARY KEY (org_level, ons_code, boundary_version)
+    geom_web               geometry(MultiPolygon, 4326),  -- simplified for the browser
+    PRIMARY KEY (org_level, ons_code, boundary_version),
+    FOREIGN KEY (org_level, org_code) REFERENCES gold.organisation (org_level, org_code)
 );
 CREATE INDEX geometry_geom_idx ON gold.geometry USING gist (geom);
+CREATE INDEX geometry_org_idx ON gold.geometry (org_level, org_code, boundary_version);
+
+CREATE TABLE gold.practice_location (
+    practice_code      text PRIMARY KEY,
+    practice_name      text,
+    postcode           text,
+    lat                double precision,   -- NULL for the handful of postcodes postcodes.io does not know
+    lon                double precision,
+    quality            integer,            -- postcodes.io positional quality (1 = best)
+    lsoa               text,
+    sub_icb_code       text,
+    icb_code           text,
+    region_code        text,
+    unmapped           boolean NOT NULL,
+    source_release     text NOT NULL,      -- latest mapping snapshot the practice appears in
+    geom               geometry(Point, 4326)
+);
+CREATE INDEX practice_location_geom_idx ON gold.practice_location USING gist (geom);
+CREATE INDEX practice_location_sub_icb_idx ON gold.practice_location (sub_icb_code);
