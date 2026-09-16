@@ -55,9 +55,10 @@ def test_every_raw_csv_is_classified_and_the_loaded_set_is_the_nine_analytical_f
         loaded = {classify_file(p.name) for p in release_files(RAW / release)}
         assert loaded <= LOADED_FAMILIES
         if release == "2026-06":
-            assert loaded == {"nhs_rate", "la_rate", "sub_icb_consolidated"}
+            assert loaded == {"nhs_rate", "la_rate", "sub_icb_consolidated", "practice_measures"}
         else:
-            assert len(loaded) == 9
+            assert len(loaded) == 9   # the Era-A practice files are classified but not loaded
+            assert {classify_file(n) for n in names} >= {"practice_anti_psy", "practice_ass_plans", "practice_data_date"}
     assert classify_file("something-else.csv") is None
 
 
@@ -93,6 +94,27 @@ def test_values_and_states_survive_the_load_untouched():
     assert (out["value_state"] == "suppressed").sum() == (raw["Value"] == "*").sum()
     assert set(out["residential_type"]) == set(raw["Measure"])
     assert (out["comparability"] == "labels_only").all()
+
+
+def test_era_b_practice_file_loads_with_age_decoded_and_every_practice_mappable(silver):
+    raw = read_raw(RAW / "2026-06" / "pcdem-practice-jun-2026.csv")
+    rows = silver[silver["org_level"] == "practice"]
+    assert len(rows) == len(raw) == 42616
+    assert rows["org_code"].nunique() == raw["ODS_CODE"].nunique() == 6088
+    assert rows["ons_code"].isna().all() and not rows["is_derived"].any()
+    assert set(rows["measure"]) == {"DEMENTIA_REGISTER", "PAT_LIST", "REVIEWS"}
+    def ages(breakdown):
+        return set(rows.loc[rows["breakdown"] == breakdown, "age"])
+    assert ages("DEMENTIA_REGISTER_0_64") == {"0_64"}
+    assert ages("PAT_LIST_65_PLUS") == {"65_PLUS"}
+    assert ages("DIAG_RECEIVED_CARE_PLAN") == {"ALL"}
+    assert (rows["comparability"] == "era_b_only").all()
+    # Practice history starts here: no practice rows from the Era-A releases.
+    assert set(rows["source_release"]) == {"2026-06"}
+    # Every measured practice is in the June mapping snapshot (the closed-practice
+    # case the notebook found is in May 2025, which is out of scope).
+    mapping = read_raw(RAW / "2026-06" / "mapping-file-july-dementia-2026.csv")
+    assert set(rows["org_code"]) <= set(mapping["PRACTICE_CODE"])
 
 
 def test_identity_normalisation_in_the_loaded_rows(silver):

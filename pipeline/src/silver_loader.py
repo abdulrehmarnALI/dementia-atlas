@@ -9,9 +9,11 @@ One entry point per level of ambition:
                     cross-release revision check applied and "latest release wins"
                     resolution available separately
 
-Families loaded now: the two diagnosis-rate files (both eras), the seven Era-A Sub-ICB
-measure families, and the Era-B consolidated Sub-ICB file. The practice-level files
-and the mapping snapshots are classified but not loaded yet (NOW.md).
+Families loaded: the two diagnosis-rate files (both eras), the seven Era-A Sub-ICB
+measure families, the Era-B consolidated Sub-ICB file and the Era-B practice file.
+The Era-A practice-level files are classified but deliberately not loaded
+(docs/context.md: practice-level history starts at June 2026). Mapping snapshots are
+a dimension table, loaded by ``mapping_loader``.
 """
 
 import re
@@ -61,7 +63,12 @@ ERA_A_CATEGORY_FAMILIES = frozenset({"sicbl_age_sex", "sicbl_ethnicity", "sicbl_
 ERA_A_MULTI_LEVEL_FAMILIES = frozenset({"sicbl_cog_imp", "sicbl_incidence_onset_delirium", "sicbl_comor_pall_care"})
 RATE_FAMILIES = frozenset({"nhs_rate", "la_rate"})
 
-LOADED_FAMILIES = RATE_FAMILIES | ERA_A_CATEGORY_FAMILIES | ERA_A_MULTI_LEVEL_FAMILIES | {"sub_icb_consolidated"}
+LOADED_FAMILIES = (RATE_FAMILIES | ERA_A_CATEGORY_FAMILIES | ERA_A_MULTI_LEVEL_FAMILIES
+                   | {"sub_icb_consolidated", "practice_measures"})
+
+# Era-B practice file: MEASURE is a roll-up of BREAKDOWN, and the register / list-size
+# breakdowns carry an age grouping in their name.
+_PRACTICE_AGE_BREAKDOWN = re.compile(r"^(?:DEMENTIA_REGISTER|PAT_LIST)_(?P<age>0_64|65_PLUS)$")
 
 
 def classify_file(filename: str) -> str | None:
@@ -164,6 +171,22 @@ def _shape_era_b_sub_icb(raw: pd.DataFrame, family: str) -> pd.DataFrame:
     })
 
 
+def _shape_era_b_practice(raw: pd.DataFrame, family: str) -> pd.DataFrame:
+    age = raw["BREAKDOWN"].str.extract(_PRACTICE_AGE_BREAKDOWN)["age"].fillna(ALL)
+    return pd.DataFrame({
+        "period_end": raw["ACH_DATE"],
+        "org_level": raw["ORG_TYPE"].map(to_org_level),
+        "org_code": raw["ODS_CODE"],
+        "ons_code": pd.NA,                # practices have no ONS geography code
+        "measure": raw["MEASURE"],
+        "breakdown": raw["BREAKDOWN"],
+        "age": age,
+        "gender": ALL, "ethnicity": ALL, "dementia_type": ALL, "residential_type": ALL,
+        "value_raw": raw["VALUE"],
+        "dq_raw": "",
+    })
+
+
 def _shaper(family: str):
     if family in RATE_FAMILIES:
         return _shape_rate
@@ -173,6 +196,8 @@ def _shaper(family: str):
         return _shape_era_a_multi_level
     if family == "sub_icb_consolidated":
         return _shape_era_b_sub_icb
+    if family == "practice_measures":
+        return _shape_era_b_practice
     raise ValueError(f"Family {family!r} is not loaded into silver (yet)")
 
 

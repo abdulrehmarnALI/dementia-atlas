@@ -35,9 +35,9 @@ AGE_BANDS: tuple[str, ...] = (
     "0_39", "40_44", "45_49", "50_54", "55_59", "60_64",
     "65_69", "70_74", "75_79", "80_84", "85_89", "90_PLUS",
 )
-# Era-A totals that Era B does not publish as a single row. ``65_PLUS`` also appears
-# in Era B's practice-file breakdown names, so it is a published token, not invented.
-AGE_TOTALS: tuple[str, ...] = ("65_PLUS",)
+# Age groupings published as totals rather than bands: Era-A 65+ register totals, and
+# the Era-B practice file's ``<measure>_0_64`` / ``<measure>_65_PLUS`` breakdowns.
+AGE_TOTALS: tuple[str, ...] = ("0_64", "65_PLUS")
 
 GENDERS: tuple[str, ...] = ("Female", "Male")
 
@@ -229,8 +229,15 @@ CROSS_ERA_COMPARABILITY: dict[tuple[str, str], str] = {
     ("PALLIATIVE_CARE", NOT_APPLICABLE): COMPARABLE,
     ("COMORBIDITIES", NOT_APPLICABLE): ERA_A_ONLY,
     ("FRAILTY", "*"): ERA_B_ONLY,
-    ("PRESCRIBING", "*"): ERA_B_ONLY,      # Era-A practice-level equivalence undecided
+    ("PRESCRIBING", "*"): ERA_B_ONLY,      # Era-A practice-level files are out of scope
     ("REFERRALS", "*"): ERA_B_ONLY,        # explicitly not comparable to earlier (note 6)
+    # Era-B practice file. Era-A practice-level history is out of scope by decision
+    # (docs/context.md), so practice series start at June 2026.
+    ("DEMENTIA_REGISTER", "DEMENTIA_REGISTER_0_64"): ERA_B_ONLY,
+    ("DEMENTIA_REGISTER", "DEMENTIA_REGISTER_65_PLUS"): ERA_B_ONLY,
+    ("PAT_LIST", "PAT_LIST_0_64"): ERA_B_ONLY,
+    ("PAT_LIST", "PAT_LIST_65_PLUS"): ERA_B_ONLY,
+    ("REVIEWS", "*"): ERA_B_ONLY,
 }
 
 
