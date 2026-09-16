@@ -209,6 +209,12 @@ ERA_B_ONLY = "era_b_only"                # new in Era B
 
 # Keyed on the decoded (measure, breakdown). Taken from the notebook's §7.2 table.
 CROSS_ERA_COMPARABILITY: dict[tuple[str, str], str] = {
+    # The five diagnosis-rate measures: identical name, definition and schema in every release.
+    ("DEMENTIA_ESTIMATE_65_PLUS", NOT_APPLICABLE): COMPARABLE,
+    ("DEMENTIA_REGISTER_65_PLUS", NOT_APPLICABLE): COMPARABLE,
+    ("DIAG_RATE_65_PLUS", NOT_APPLICABLE): COMPARABLE,
+    ("DIAG_RATE_65_PLUS_LL", NOT_APPLICABLE): COMPARABLE,
+    ("DIAG_RATE_65_PLUS_UL", NOT_APPLICABLE): COMPARABLE,
     ("DEMENTIA_REGISTER", BREAKDOWN_AGE_GENDER): COMPARABLE,       # 65+ bands only in Era A
     ("DEMENTIA_REGISTER", BREAKDOWN_ETHNICITY): COMPARABLE,
     ("DEMENTIA_REGISTER", BREAKDOWN_DEMENTIA_TYPE): COMPARABLE_LABELS_ONLY,   # ~1% suppressed

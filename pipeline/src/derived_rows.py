@@ -60,24 +60,32 @@ def derive_all_sex_rows(df: pd.DataFrame) -> pd.DataFrame:
     if sexed.empty:
         return df.iloc[0:0].copy()
 
-    rows = []
-    for key, group in sexed.groupby(GROUP_COLUMNS, sort=False, dropna=False):
-        if set(group["gender"]) != {"Female", "Male"} or len(group) != 2:
-            continue
-        num, state = sum_with_state(group["value_num"], group["value_state"])
-        row = dict(zip(GROUP_COLUMNS, key))
-        row.update({
-            "gender": ALL,
-            "value_raw": pd.NA,
-            "value_num": num,
-            "value_state": state,
-            "dq_flag": False,
-            "is_derived": True,
-            "ingested_at": group["ingested_at"].iloc[0],
-        })
-        rows.append(row)
+    # Vectorised form of sum_with_state(): count members, sexes and states per group.
+    flags = sexed.assign(
+        _female=(sexed["gender"] == "Female").astype(int),
+        _male=(sexed["gender"] == "Male").astype(int),
+        _numeric=(sexed["value_state"] == NUMERIC).astype(int),
+        _suppressed=(sexed["value_state"] == SUPPRESSED).astype(int),
+    )
+    agg = (flags.groupby(GROUP_COLUMNS, sort=False, dropna=False)
+           .agg(n=("_female", "size"), female=("_female", "sum"), male=("_male", "sum"),
+                n_numeric=("_numeric", "sum"), n_suppressed=("_suppressed", "sum"),
+                total=("value_num", "sum"), ingested_at=("ingested_at", "first"))
+           .reset_index())
+    agg = agg[(agg["n"] == 2) & (agg["female"] == 1) & (agg["male"] == 1)]
 
-    out = pd.DataFrame(rows, columns=list(SILVER_COLUMNS))
+    all_numeric = agg["n_numeric"] == 2
+    out = agg[GROUP_COLUMNS + ["ingested_at"]].copy()
+    out["gender"] = ALL
+    out["value_raw"] = pd.NA
+    out["value_num"] = agg["total"].where(all_numeric, float("nan"))
+    out["value_state"] = NUMERIC
+    out.loc[~all_numeric, "value_state"] = BLANK
+    out.loc[~all_numeric & (agg["n_suppressed"] > 0), "value_state"] = SUPPRESSED
+    out["dq_flag"] = False
+    out["is_derived"] = True
+
+    out = out[list(SILVER_COLUMNS)].reset_index(drop=True)
     for col, dt in SILVER_COLUMNS.items():
         out[col] = out[col].astype(dt)
     return out
