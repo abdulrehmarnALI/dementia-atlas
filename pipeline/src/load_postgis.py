@@ -1,4 +1,4 @@
-"""Load the gold Parquet tables into PostGIS.
+﻿"""Load the gold Parquet tables into PostGIS.
 
     python -m src.load_postgis                    # DATABASE_URL from the environment
     python -m src.load_postgis postgresql://...   # or given explicitly
@@ -8,7 +8,8 @@ table in, builds the Sub-ICB geometries from their GeoJSON, and dissolves ICB an
 NHS-region outlines from them. Idempotent: run it after every ``src.gold`` build.
 
 To run a database locally: ``docker compose -f infra/docker-compose.yml up -d`` and
-``DATABASE_URL=postgresql://atlas:atlas@localhost:5432/atlas``.
+``DATABASE_URL=postgresql://atlas:atlas@localhost:5434/atlas`` (5434, not 5432 - see
+the compose file).
 """
 
 import os

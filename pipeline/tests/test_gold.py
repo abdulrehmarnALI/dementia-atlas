@@ -56,13 +56,17 @@ def test_referential_integrity(gold):
     assert set(zip(parents["parent_org_level"], parents["parent_org_code"])) <= org_keys
 
 
-def test_observation_is_exactly_latest_silver(gold, latest):
+def test_observation_is_latest_silver_with_one_england(gold, latest):
     obs = gold["observation"]
-    assert len(obs) == len(latest)
-    assert obs["value"].sum() == pytest.approx(latest["value_num"].sum())
-    assert obs["value_state"].value_counts().to_dict() == latest["value_state"].value_counts().to_dict()
+    # la_rate's England rows duplicate nhs_rate's (same five measures, same values), so
+    # gold has exactly those rows fewer.
+    la_england = latest[(latest["org_level"] == "country") & (latest["org_code"] == "E92000001")]
+    assert len(obs) == len(latest) - len(la_england) and len(la_england) > 0
+    assert obs["value"].sum() == pytest.approx(latest["value_num"].sum() - la_england["value_num"].sum())
     assert (obs["value_state"] == "minimum").sum() > 0
     assert obs["is_derived"].sum() == latest["is_derived"].sum()
+    assert set(obs.loc[obs["org_level"] == "country", "org_code"]) == {"ENG"}
+    assert (gold["organisation"]["org_level"] == "country").sum() == 1
 
 
 def test_measure_keys_and_descriptions(gold):
@@ -107,7 +111,7 @@ def test_diagnosis_rate_matches_the_raw_june_file(gold):
     assert row["register_65_plus"] == eng["DEMENTIA_REGISTER_65_PLUS"]
     assert row["diag_rate"] == eng["DIAG_RATE_65_PLUS"]
     june = rate[rate["period_end"] == pd.Timestamp("2026-06-30")]
-    assert june.groupby("org_level").size().to_dict() == {"country": 2, "gor": 9, "icb": 36, "ltla": 296, "nhs_region": 7, "sub_icb": 106, "utla": 153}
+    assert june.groupby("org_level").size().to_dict() == {"country": 1, "gor": 9, "icb": 36, "ltla": 296, "nhs_region": 7, "sub_icb": 106, "utla": 153}
     assert june["dq_flag"].sum() > 0 and set(june.loc[june["dq_flag"], "org_level"]) <= {"ltla", "utla"}
 
 
@@ -117,6 +121,10 @@ def test_geometry_joins_every_sub_icb_in_the_june_release(gold):
     current = gold["organisation"].query("org_level == 'sub_icb' and is_current")
     assert set(geo["org_code"]) == set(current["org_code"])
     assert geo["geometry_geojson"].str.startswith('{"type":"').all()
+    # The organisation's ONS code is the latest one: D9Y0V and 92A were re-coded at
+    # the reorganisation and the April 2026 boundary file uses the new codes.
+    latest_ons = current.set_index("org_code")["ons_code"]
+    assert (geo.set_index("org_code")["ons_code"] == latest_ons.reindex(geo["org_code"]).to_numpy()).all()
 
 
 @pytest.mark.skipif(not os.environ.get("DATABASE_URL"), reason="DATABASE_URL not set")

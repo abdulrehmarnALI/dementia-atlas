@@ -145,3 +145,14 @@ is a skimmable log, not a transcript._
 - 7 gold tests pass; the PostGIS round-trip test is gated on DATABASE_URL and skipped because the
   Docker daemon wasn't running. psycopg pinned.
 - Committed, not pushed. Next: the real PostGIS load (NOW.md item 1).
+
+### 2026-09-16 (later) - Gold loaded into PostGIS for real
+
+- Started Docker Desktop, brought up the PostGIS container, loaded gold: 416,686 observations,
+  14,460 diagnosis-rate rows, 106 Sub-ICB polygons + 36 ICB + 7 region outlines dissolved in
+  PostGIS, all geometries valid. Round-trip test passes.
+- Two things the first real run turned up: (1) this machine runs native PostgreSQL 13 and 17
+  services on 5432 and 5433, so the container is on host port 5434 - a localhost:5432 URL hits
+  the wrong server with a confusing password error; (2) England was in gold twice (ENG from the
+  NHS files, E92000001 from la_rate). Gold now unifies to ENG and asserts the two sources agree.
+- Committed, not pushed.

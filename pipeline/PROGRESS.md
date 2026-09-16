@@ -30,10 +30,10 @@ No dates — WORKLOG.md has those. Tick things off here as they land._
 - [x] Series-breaks table: organisation breaks (2026-04 reorg, Frimley split, UTLA expansion) and measure breaks (definition, suppression, discontinued, introduced) — `src/series_breaks.py`
 - [x] Gold tables built from silver: organisation, measure, period, observation, diagnosis_rate, series_break, geometry — `src/gold.py`, `data/processed/gold/`
 - [x] PostGIS schema and loader (COPY + dissolved ICB / region outlines) and a local docker-compose — `db/schema.sql`, `src/load_postgis.py`, `infra/docker-compose.yml`
+- [x] Gold loaded into a local PostGIS container end to end; ICB and region outlines dissolve cleanly; round-trip test passes
 
 ## Next
 
-- [ ] Run the PostGIS load for real against the local container and fix what it turns up
 - [ ] Local-authority (LTLA / UTLA) boundaries into `geometry`
 - [ ] Web app scaffold: one map page over `gold.diagnosis_rate` + `gold.geometry`
 - [ ] Export the QA notebook's numbered findings into `docs/findings.md`

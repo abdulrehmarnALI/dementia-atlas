@@ -12,15 +12,11 @@ _(empty)_
 Gold phase. The pipeline end is done (`src.build` → `src.gold` → `src.load_postgis`); what's
 left is proving the database end and wiring the app.
 
-1. **Run the PostGIS load for real**: start Docker Desktop, `docker compose -f
-   infra/docker-compose.yml up -d`, set `DATABASE_URL=postgresql://atlas:atlas@localhost:5432/atlas`,
-   run `python -m src.load_postgis`, then `pytest tests/test_gold.py` (the round-trip test stops
-   skipping). Fix whatever the first real load turns up.
-2. Local-authority boundaries: LTLA / UTLA polygons (ONS Open Geography, 2025 boundaries) so the
+1. Local-authority boundaries: LTLA / UTLA polygons (ONS Open Geography, 2025 boundaries) so the
    `la_rate` diagnosis rates can be mapped. Same pattern as the Sub-ICB GeoJSON → `geometry`.
-3. Web app scaffold in `web/`: Next.js + MapLibre + CSS Modules, one page, reading
+2. Web app scaffold in `web/`: Next.js + MapLibre + CSS Modules, one page, reading
    `gold.diagnosis_rate` joined to `gold.geometry` for the latest period. Needs its own queue.
-4. Export the QA notebook's numbered findings into `docs/findings.md` so CLAUDE.md's references
+3. Export the QA notebook's numbered findings into `docs/findings.md` so CLAUDE.md's references
    to §1–§10 resolve.
 
 ## Blocked / needs Sunshine's input

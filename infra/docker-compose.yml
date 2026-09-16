@@ -1,9 +1,11 @@
-# Local PostGIS for the Dementia Atlas gold layer.
+﻿# Local PostGIS for the Dementia Atlas gold layer.
 #
 #   docker compose -f infra/docker-compose.yml up -d
-#   export DATABASE_URL=postgresql://atlas:atlas@localhost:5432/atlas
+#   export DATABASE_URL=postgresql://atlas:atlas@localhost:5434/atlas
 #   cd pipeline && python -m src.build && python -m src.gold && python -m src.load_postgis
 #
+# Host port is 5434 on purpose: this machine already runs native PostgreSQL services
+# on 5432 and 5433, and a connection to localhost:5432 lands on those, not on this container.
 # Data lives in the named volume; `docker compose ... down -v` wipes it.
 
 services:
@@ -15,7 +17,7 @@ services:
       POSTGRES_PASSWORD: atlas
       POSTGRES_DB: atlas
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - atlas-pgdata:/var/lib/postgresql/data
     healthcheck:

@@ -164,7 +164,10 @@ def organisation_names(raw_root: Path) -> pd.DataFrame:
 
 def organisation_dimension(silver: pd.DataFrame, hierarchy: pd.DataFrame, mapping: pd.DataFrame,
                            breaks: pd.DataFrame, names: pd.DataFrame) -> pd.DataFrame:
-    orgs = (silver.groupby(["org_level", "org_code"], dropna=False)
+    # ONS codes can change under a stable ODS code (D9Y0V and 92A were re-coded when
+    # their boundaries changed), so "the" ONS code is the latest release's.
+    ordered = silver.sort_values(["source_release", "period_end"], kind="stable")
+    orgs = (ordered.groupby(["org_level", "org_code"], dropna=False)
             .agg(ons_code=("ons_code", "last"), first_period=("period_end", "min"),
                  last_period=("period_end", "max"), latest_release=("source_release", "max"))
             .reset_index())
@@ -179,7 +182,7 @@ def organisation_dimension(silver: pd.DataFrame, hierarchy: pd.DataFrame, mappin
     latest_map = mapping.sort_values("source_release").drop_duplicates("practice_code", keep="last")
     parent.update({("practice", r.practice_code): ("sub_icb", r.sub_icb_code)
                    for r in latest_map.itertuples() if not r.unmapped})
-    parent.update({("gor", code): ("country", ENGLAND_ONS_CODE)
+    parent.update({("gor", code): ("country", ENGLAND_ODS_CODE)   # gold has one England: ENG
                    for code in orgs.loc[orgs["org_level"] == "gor", "org_code"]})
     parents = orgs.apply(lambda r: parent.get((r["org_level"], r["org_code"]), (pd.NA, pd.NA)), axis=1)
     orgs["parent_org_level"] = [p[0] for p in parents]
@@ -234,18 +237,48 @@ def diagnosis_rate_wide(latest: pd.DataFrame) -> pd.DataFrame:
     return wide[cols].sort_values(["period_end", "org_level", "org_code"]).reset_index(drop=True)
 
 
-def geometry_table(geojson_path: Path, organisation: pd.DataFrame) -> pd.DataFrame:
+def sub_icb_ons_lookup(silver: pd.DataFrame) -> dict[str, str]:
+    """Every ONS code a Sub-ICB has ever been published under -> its ODS code, so a
+    boundary file keyed on either an old or a new ONS code still joins."""
+    subs = silver[(silver["org_level"] == "sub_icb") & silver["ons_code"].notna()]
+    pairs = subs[["ons_code", "org_code", "source_release"]].drop_duplicates(["ons_code", "org_code"])
+    pairs = pairs.sort_values("source_release").drop_duplicates("ons_code", keep="last")
+    return dict(zip(pairs["ons_code"], pairs["org_code"]))
+
+
+def geometry_table(geojson_path: Path, ons_lookup: dict[str, str]) -> pd.DataFrame:
     """Sub-ICB polygons keyed by org_code, via the ONS code the boundary file uses."""
     features = json.load(open(geojson_path, encoding="utf-8"))["features"]
-    subs = organisation[organisation["org_level"] == "sub_icb"].set_index("ons_code")["org_code"]
     rows = []
     for f in features:
         ons = f["properties"]["SICBL26CD"]
-        rows.append({"org_level": "sub_icb", "org_code": subs.get(ons, pd.NA), "ons_code": ons,
+        rows.append({"org_level": "sub_icb", "org_code": ons_lookup.get(ons, pd.NA), "ons_code": ons,
                      "name_in_boundary_file": f["properties"]["SICBL26NM"],
                      "boundary_version": BOUNDARY_VERSION,
                      "geometry_geojson": json.dumps(f["geometry"], separators=(",", ":"))})
     return pd.DataFrame(rows).sort_values("ons_code").reset_index(drop=True)
+
+
+# --------------------------------------------------------------------------------------
+# England appears twice in silver (ENG from the NHS files, E92000001 from la_rate)
+# --------------------------------------------------------------------------------------
+
+def unify_england(latest: pd.DataFrame) -> pd.DataFrame:
+    """Silver keeps both spellings of England's org_code because they come from
+    different files. Gold has one England: la_rate's country rows are re-keyed to
+    ENG and dropped where the NHS-file row already says the same thing. If the two
+    sources ever disagree on a value, that is an error, not a silent pick."""
+    df = latest.copy()
+    is_la_england = (df["org_level"] == "country") & (df["org_code"] == ENGLAND_ONS_CODE)
+    df.loc[is_la_england, "org_code"] = ENGLAND_ODS_CODE
+    key = ["source_release", "period_end", "org_level", "org_code", "measure", "breakdown", *DIMENSION_COLUMNS]
+    dup = df[df.duplicated(key, keep=False)]
+    if not dup.empty:
+        disagree = dup.groupby(key)["value_num"].nunique()
+        if (disagree > 1).any():
+            raise ValueError(f"England published with different values by different files: "
+                             f"{disagree[disagree > 1].index.tolist()[:3]}")
+    return df.sort_values("source_file", na_position="last").drop_duplicates(key, keep="first").reset_index(drop=True)
 
 
 # --------------------------------------------------------------------------------------
@@ -261,8 +294,8 @@ def latest_dictionary(raw_root: Path) -> Path:
 
 def build_gold(silver_dir: Path = SILVER_DIR, raw_root: Path = RAW_ROOT,
                geojson_path: Path | None = GEOJSON) -> dict[str, pd.DataFrame]:
-    silver = read_silver(silver_dir / "pcdd_observations.parquet")
-    latest = read_silver(silver_dir / "pcdd_latest.parquet")
+    silver = unify_england(read_silver(silver_dir / "pcdd_observations.parquet"))
+    latest = unify_england(read_silver(silver_dir / "pcdd_latest.parquet"))
     mapping = pd.read_parquet(silver_dir / "pcdd_mapping.parquet")
     hierarchy = pd.read_parquet(silver_dir / "pcdd_hierarchy.parquet")
     breaks = pd.read_parquet(silver_dir / "pcdd_series_breaks.parquet")
@@ -276,7 +309,7 @@ def build_gold(silver_dir: Path = SILVER_DIR, raw_root: Path = RAW_ROOT,
         "observation": observation_fact(latest, measures),
         "diagnosis_rate": diagnosis_rate_wide(latest),
         "series_break": breaks,
-        "geometry": geometry_table(geojson_path, organisation) if geojson_path else pd.DataFrame(),
+        "geometry": geometry_table(geojson_path, sub_icb_ons_lookup(silver)) if geojson_path else pd.DataFrame(),
     }
     return gold
 
