@@ -109,9 +109,10 @@ def _shape_rate(raw: pd.DataFrame, family: str) -> pd.DataFrame:
         org_code = raw["ORG_CODE"]
     else:
         # la_rate has no ODS code; the ONS code is the identity, canonicalised across
-        # the 2025-08 LTLA reissue so a series joins on org_code. ons_code keeps the
-        # published value.
-        org_code = raw["ONS_CODE"].where(org_level != "ltla", raw["ONS_CODE"].map(canonical_ltla_ons_code))
+        # the 2025-08 reissue so a series joins on org_code. The two reissued codes
+        # are unitary authorities, which appear at both LTLA and UTLA, so the
+        # canonical form applies at every tier. ons_code keeps the published value.
+        org_code = raw["ONS_CODE"].map(canonical_ltla_ons_code)
     return pd.DataFrame({
         "period_end": raw["ACH_DATE"],
         "org_level": org_level,
@@ -229,6 +230,8 @@ def load_file(path: Path, release: str, ingested_at: pd.Timestamp | None = None)
         "value_raw": shaped["value_raw"],
         "value_num": values["value_num"],
         "value_state": values["value_state"],
+        "value_num_lower": values["value_num_lower"],
+        "value_num_upper": values["value_num_upper"],
         "dq_flag": parse_dq_flag(shaped["dq_raw"]),
         "is_derived": False,
         "comparability": [comparability[p] for p in zip(shaped["measure"], shaped["breakdown"])],
@@ -290,21 +293,31 @@ def _assert_unique_key(df: pd.DataFrame, label: str) -> None:
 OBSERVATION_KEY = tuple(c for c in SILVER_KEY if c != "source_release")
 
 
-def find_revisions(df: pd.DataFrame) -> pd.DataFrame:
-    """Observations published by more than one release with differing raw values.
+_REVISION_COLUMNS = ["source_release", "value_raw", "value_num", "value_state"]
 
-    Evidence to date says this is always empty (context.md revision policy), so the
-    build fails loudly if it is not. Rows are one per (observation, pair of releases).
+
+def find_revisions(df: pd.DataFrame) -> pd.DataFrame:
+    """Observations published by more than one release whose value differs.
+
+    "Differs" means a different ``value_state`` or a different ``value_num`` - so
+    ``*`` -> ``3`` is a revision, but ``62`` -> ``62.0`` (a formatting change, which
+    Era B's format shift makes plausible) is not. Evidence to date says this is
+    always empty (context.md revision policy), so the build fails loudly if it is
+    not. Rows are one per (observation, release).
     """
     key = list(OBSERVATION_KEY)
     published = df[~df["is_derived"].astype(bool)]
     overlap = published[published.duplicated(key, keep=False)]
     if overlap.empty:
-        return overlap.iloc[0:0][key + ["source_release", "value_raw"]]
-    wide = (overlap.groupby(key, dropna=False, sort=False)["value_raw"]
-            .agg(["nunique", "size"]).reset_index())
-    diff = wide[wide["nunique"] > 1]
-    return overlap.merge(diff[key], on=key)[key + ["source_release", "value_raw"]].sort_values(key + ["source_release"])
+        return overlap.iloc[0:0][key + _REVISION_COLUMNS]
+    # astype(str) keeps NaN missing (pandas 3), which nunique would then ignore - so
+    # spell out the missing case before building the signature.
+    number = overlap["value_num"].round(9).astype("string").fillna("none")
+    signature = overlap["value_state"].astype("string") + "|" + number
+    distinct = signature.groupby([overlap[c] for c in key], dropna=False, sort=False).nunique()
+    revised_keys = distinct[distinct > 1].reset_index()[key]
+    return (overlap.merge(revised_keys, on=key)[key + _REVISION_COLUMNS]
+            .sort_values(key + ["source_release"]).reset_index(drop=True))
 
 
 def overlapping_observations(df: pd.DataFrame) -> int:

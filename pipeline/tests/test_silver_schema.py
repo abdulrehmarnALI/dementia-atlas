@@ -119,6 +119,11 @@ def test_blank_and_n_a_never_appear_in_a_value_column_but_are_still_classified(v
     out = classify_values(pd.Series(["12", "*", "", ".", "N/A", "3.5"]))
     assert list(out["value_state"]) == [NUMERIC, SUPPRESSED, BLANK, BLANK, NOT_APPLICABLE, NUMERIC]
     assert out["value_num"].tolist()[:1] == [12.0]
+    # Bounds: numeric is its own bounds, suppressed is 0..4, blank / N/A have none.
+    assert out["value_num_lower"].tolist()[:2] == [12.0, 0.0]
+    assert out["value_num_upper"].tolist()[:2] == [12.0, 4.0]
+    assert out.loc[2:4, ["value_num_lower", "value_num_upper"]].isna().all().all()
+    assert out.loc[5, "value_num_lower"] == out.loc[5, "value_num_upper"] == 3.5
 
 
 def test_unknown_value_token_raises():
@@ -203,8 +208,9 @@ def test_unobserved_boundary_months_are_refused_not_guessed():
 
 def test_silver_shape_and_conform():
     assert set(SILVER_KEY) <= set(SILVER_COLUMNS)
-    for required in ("value_raw", "value_num", "value_state", "dq_flag", "source_release",
-                     "source_file", "publication_era", "ingested_at", "dictionary_version"):
+    for required in ("value_raw", "value_num", "value_state", "value_num_lower", "value_num_upper",
+                     "dq_flag", "source_release", "source_file", "publication_era", "ingested_at",
+                     "dictionary_version"):
         assert required in SILVER_COLUMNS
     empty = empty_silver_frame()
     assert list(empty.columns) == list(SILVER_COLUMNS)

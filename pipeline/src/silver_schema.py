@@ -29,8 +29,17 @@ NUMERIC = "numeric"
 SUPPRESSED = "suppressed"            # '*' - disclosure control, true value in 0..4
 BLANK = "blank"                      # unavailable / not published
 NOT_APPLICABLE = "not_applicable"    # 'N/A' - breakdown does not apply to this measure
+MINIMUM = "minimum"                  # computed over suppressed inputs: value_num is the
+                                     # lower bound, value_num_upper the upper bound
 
-VALUE_STATES = (NUMERIC, SUPPRESSED, BLANK, NOT_APPLICABLE)
+VALUE_STATES = (NUMERIC, SUPPRESSED, BLANK, NOT_APPLICABLE, MINIMUM)
+PUBLISHED_VALUE_STATES = (NUMERIC, SUPPRESSED, BLANK, NOT_APPLICABLE)   # never MINIMUM
+
+# What '*' hides. Holds for every file silver loads (the Sub-ICB files never publish a
+# count below 5 next to '*'). It does NOT hold for the Era-A practice-level files, which
+# is one reason they are not loaded.
+SUPPRESSED_LOWER = 0.0
+SUPPRESSED_UPPER = 4.0
 
 SUPPRESSED_TOKEN = "*"
 # '' is the dictionary's "cell left blank where unavailable". '.' is undocumented: it
@@ -42,11 +51,13 @@ NOT_APPLICABLE_TOKEN = "N/A"
 
 
 def classify_values(raw: pd.Series) -> pd.DataFrame:
-    """Split a published value column into ``value_num`` (float, NaN unless numeric)
-    and ``value_state``.
+    """Split a published value column into ``value_num`` (float, NaN unless numeric),
+    ``value_state``, and the bounds ``value_num_lower`` / ``value_num_upper``.
 
-    Raises ValueError listing any token that is neither numeric nor a known
-    sentinel, so a new publisher convention cannot slip through as NaN.
+    Bounds: a numeric value is its own bounds; a suppressed cell is 0..4; blank and
+    not-applicable have none. Raises ValueError listing any token that is neither
+    numeric nor a known sentinel, so a new publisher convention cannot slip through
+    as NaN.
     """
     raw = raw.astype("string").fillna("")
     value_num = pd.to_numeric(raw, errors="coerce").astype("float64")
@@ -58,7 +69,11 @@ def classify_values(raw: pd.Series) -> pd.DataFrame:
     unknown = raw[value_state.isna()].unique()
     if len(unknown):
         raise ValueError(f"Unrecognised value tokens: {sorted(map(str, unknown))!r}")
-    return pd.DataFrame({"value_num": value_num, "value_state": value_state})
+    suppressed = value_state == SUPPRESSED
+    lower = value_num.where(~suppressed, SUPPRESSED_LOWER)
+    upper = value_num.where(~suppressed, SUPPRESSED_UPPER)
+    return pd.DataFrame({"value_num": value_num, "value_state": value_state,
+                         "value_num_lower": lower, "value_num_upper": upper})
 
 
 def parse_dq_flag(raw: pd.Series) -> pd.Series:
@@ -187,6 +202,8 @@ SILVER_COLUMNS: dict[str, str] = {
     "value_raw": "string",
     "value_num": "float64",
     "value_state": "string",
+    "value_num_lower": "float64",       # exact bounds on the true value; equal to value_num
+    "value_num_upper": "float64",       #   when numeric, 0..4 when suppressed, NaN when blank
     "dq_flag": "boolean",               # rate files only; False elsewhere
     "is_derived": "boolean",            # computed at silver build (e.g. all-sex rows), not published
     "comparability": "string",          # measure_crosswalk cross-era class

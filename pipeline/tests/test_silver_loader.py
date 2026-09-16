@@ -157,15 +157,28 @@ def test_latest_release_wins_leaves_one_row_per_observation(silver):
     assert set(winners["source_release"]) == {"2026-03"}
 
 
-def test_a_revision_is_detected():
+def test_a_revision_is_detected_but_a_formatting_change_is_not():
     a = load_file(RAW / "2025-05" / "pcdem-nhs-rate-may-2025.csv", "2025-05", INGESTED)
     b = load_file(RAW / "2026-03" / "pcdem-nhs-rate-mar-2026.csv", "2026-03", INGESTED)
     assert find_revisions(pd.concat([a, b])).empty
+    overlapping = b.index[b["period_end"] == pd.Timestamp("2025-05-31")]
+
+    # Same number, different spelling: not a revision.
+    reformatted = b.copy()
+    reformatted.loc[overlapping, "value_raw"] = reformatted.loc[overlapping, "value_num"].map("{:.3f}".format)
+    assert find_revisions(pd.concat([a, reformatted])).empty
+
+    # A different number is.
     tampered = b.copy()
-    idx = tampered.index[tampered["period_end"] == pd.Timestamp("2025-05-31")][0]
-    tampered.loc[idx, "value_raw"] = "999999"
+    tampered.loc[overlapping[0], ["value_raw", "value_num", "value_num_lower", "value_num_upper"]] = ["999999", 999999.0, 999999.0, 999999.0]
     revs = find_revisions(pd.concat([a, tampered]))
     assert len(revs) == 2 and set(revs["source_release"]) == {"2025-05", "2026-03"}
+    assert 999999.0 in set(revs["value_num"])
+
+    # A state change (a number becoming suppressed) is too.
+    suppressed = b.copy()
+    suppressed.loc[overlapping[0], ["value_raw", "value_num", "value_state", "value_num_lower", "value_num_upper"]] = ["*", float("nan"), "suppressed", 0.0, 4.0]
+    assert len(find_revisions(pd.concat([a, suppressed]))) == 2
 
 
 # --------------------------------------------------------------------------------------
@@ -190,7 +203,7 @@ def test_dictionary_on_disk_is_checked_against_the_computed_version(tmp_path, re
     check_dictionary_version(empty, "2026-03")         # nothing to compare: silent
     for release in RELEASES:                           # the real folders all agree
         check_dictionary_version(RAW / release, release)
-    assert len(recwarn.list) == 1
+    assert not recwarn.list                            # pytest.warns consumed the only warning
 
 
 # --------------------------------------------------------------------------------------
