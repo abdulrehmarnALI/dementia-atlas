@@ -14,10 +14,7 @@ _(empty — pick the top item below to start)_
    `tests/test_aggregation_evidence.py` (exact for register/list-size measures, approximate for
    the rest — see "Needs a decision"). Needs a per-period Sub-ICB → ICB → Region hierarchy:
    Era A has it on the age/sex file rows, Era B only in the mapping snapshot.
-2. Write the mapping dimension table to Parquet alongside the observations in `src/build.py`
-   (`mapping_loader` exists and is tested; the build doesn't call it yet), and attach the
-   per-release hierarchy the aggregation step will need.
-3. Surface series breaks on rows: `org_crosswalk.sub_icb_series_break()` and the ICB reorg
+2. Surface series breaks on rows: `org_crosswalk.sub_icb_series_break()` and the ICB reorg
    give per-organisation breaks at 2026-04; the measure crosswalk gives per-measure
    comparability. Decide how these land on silver rows (a `series_break_from` column, or a
    separate breaks table) so the app never has to re-derive them.

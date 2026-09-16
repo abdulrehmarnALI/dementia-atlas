@@ -22,11 +22,12 @@ No dates — WORKLOG.md has those. Tick things off here as they land._
 - [x] Measured computed-vs-published aggregate error per measure per level for Era A — `docs/aggregation_error_era_a.md`
 - [x] Mapping snapshots (practice → Sub-ICB → ICB → Region) load as a dimension table with an `unmapped` flag — `src/mapping_loader.py`
 - [x] Era-B practice file loads into the observation frame — `src/silver_loader.py`
+- [x] Build writes the mapping table and per-release hierarchy to Parquet alongside the observations — `src/build.py`
+- [x] Code walkthrough for maintainers — `docs/code-walkthrough.md`
 
 ## Next
 
 - [ ] Hierarchy aggregation for Era-B measures (Sub-ICB → ICB → Region → England) with suppression propagation and a "computed" marker — waits on the display-rule decision (see the error table)
-- [ ] Write the mapping table to Parquet in the build and hand its hierarchy to the aggregation step
 - [ ] Back-fill April and May 2026 once those publications are sourced
 - [ ] Put series breaks on rows the app can read directly: per-organisation (2026-04 reorg, D9Y0V/92A/U2G6B boundary changes, LTLA reissue) and per-measure (comparability class)
 - [ ] Gold: app-ready tables into PostGIS — not before all of the above

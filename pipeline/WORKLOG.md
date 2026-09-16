@@ -101,3 +101,14 @@ is a skimmable log, not a transcript._
   breakdown name, comparability era_b_only). 81 tests pass. Committed, not pushed.
 - Next: mapping table into the build, series breaks on rows, aggregation once a display
   rule is chosen.
+
+### 2026-09-16 (evening) - Code walkthrough; mapping into the build
+
+- Wrote docs/code-walkthrough.md: module-by-module, how they fit, and plain-English accounts of
+  the dense bits (the vectorised grouping in derive_all_sex_rows, the masked date parsing, the
+  two-step comparability lookup, the `where` in _shape_rate, find_revisions). No renames, no
+  restructuring. Readability/correctness risks listed for Sunshine to pick from - not fixed.
+- build.py now also writes pcdd_mapping.parquet and pcdd_hierarchy.parquet, and refuses a
+  mistyped release name. 84 tests pass. Committed, not pushed.
+- Next: series breaks on rows (NOW.md item 2) needs a shape decision; aggregation (item 1)
+  needs the display rule.
