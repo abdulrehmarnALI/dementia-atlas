@@ -94,9 +94,28 @@ Then, and only then, gold and the app build.
   Era B's `MEASURE / BREAKDOWN / AGE / GENDER / ETHNICITY / DEMENTIA_TYPE / RESIDENTIAL_TYPE`
   tokens (`src/measure_crosswalk.py`), not the other way round. Era-A totals that Era B doesn't
   publish as a row (all-age register, 65+ register, all-age list size) get `breakdown = N/A`.
-- **Any sum over a suppressed cell is itself suppressed.** `value_state` propagates through
-  derived rows and aggregates (`src/derived_rows.py::sum_with_state`); silver never publishes a
-  partial sum as if it were a total.
+- **A sum over suppressed cells is published as a bounded minimum, not hidden.** Because `*`
+  hides an integer in 0–4, any computed total has exact bounds: lower = sum of the numeric cells,
+  upper = lower + 4 × (number of suppressed cells). Silver carries `value_num_lower` /
+  `value_num_upper` on every row (equal to the value when numeric, 0/4 when suppressed), and a
+  computed row over suppressed inputs gets `value_state = minimum` with `value_num` = the lower
+  bound. A sum over a *blank* cell is blank — nothing can be said. One rule,
+  `src/derived_rows.py::sum_with_state`, serves derived all-sex rows and hierarchy aggregates.
+  Era-A validation: the arithmetic holds; containment against NHS England's own published MCI
+  aggregates is only ~49% because their per-level computation noise (up to ±41) is wider than
+  the bounds — that is a property of the publisher's method, not of the bounds.
+- **Computed aggregates are filled in only where the publisher didn't publish**, sit in the same
+  observation table with `is_derived = True` and no `source_file`, and never include the
+  diagnosis-rate measures (ratios can't be summed). Register / list-size measures reproduce Era
+  A's published figures exactly; the others carry the noise documented in
+  `docs/aggregation_error_era_a.md`.
+- **Series breaks are a property of an organisation or a measure, not of an observation.** They
+  live in their own table (`src/series_breaks.py`, written as `pcdd_series_breaks.parquet`) keyed
+  on `(org_level, org_code)` or `(measure, breakdown)` with an `effective_from` period and a
+  `kind` (`closed`, `opened`, `boundary_change`, `definition_change`, `suppression_removed`,
+  `discontinued`, `introduced`). Known breaks come from the crosswalks; late starts and early ends
+  (the 2025-07 UTLA expansion, MCI from 2024-06, delirium from 2025-04) are read off the data. The
+  app joins to this table; it never re-derives breaks from rows.
 - **`U2G6B` is not `D4U1Y` under a new code — the two are never joined.** D4U1Y (NHS Frimley
   ICB – D4U1Y) closed on 31 March 2026 and its 66 practices were split three ways at the ICB
   reorganisation: 41 to the new `U2G6B` (NHS Thames Valley ICB), 14 to `D9Y0V` (Hampshire and

@@ -112,3 +112,24 @@ is a skimmable log, not a transcript._
   mistyped release name. 84 tests pass. Committed, not pushed.
 - Next: series breaks on rows (NOW.md item 2) needs a shape decision; aggregation (item 1)
   needs the display rule.
+
+### 2026-09-16 (night) - Risk fixes, bounds, aggregation, series breaks
+
+- Readability triage applied: constants renamed to the legal 2026-04 date; DIMENSION_COLUMNS
+  single-sourced; AGE_TOKENS used; S3 stubs marked not-part-of-build; guards on release-name
+  format and dictionary version; org_code identity note. Deferred 10 and 12 as agreed.
+- Bounds decision implemented across the board, not only on aggregates: every row carries
+  value_num_lower / value_num_upper (0/4 for a '*'), computed totals over suppressed inputs are a
+  'minimum' with value_num = lower bound. sum_with_state is the spec, sum_groups the vectorised
+  form, a test proves they agree. find_revisions now compares (state, number) - a pandas-3
+  astype(str)-keeps-NaN wrinkle bit here and is commented.
+- src/aggregation.py: Sub-ICB -> ICB / region / England, rates refused, unmapped Sub-ICB is an
+  error, only unpublished levels filled, written into the observation table. Era-A validation:
+  register measures exact in 6,588 comparisons; bounds containment vs published MCI ~49% because
+  publisher noise (+/-41) exceeds bound width (4-8) - arithmetic itself holds.
+- src/series_breaks.py: known org/measure breaks + late starts / early ends read off the data
+  (21 UTLAs at 2025-07, MCI 2024-06, delirium 2025-04). Found while testing: the two reissued
+  ONS codes appear at UTLA as well as LTLA, so canonicalisation now applies at every la_rate tier.
+- Build now writes five Parquet files. 98 tests pass. Context.md carries the bounds, aggregates
+  and breaks-table decisions. Committed, not pushed.
+- Next: Sunshine's silver milestone review (NOW.md item 1).
