@@ -21,8 +21,8 @@ era and a point for every practice. What's left is the app.
    tiles (`ST_AsMVT`).
 2. Practice points on the map, clustered on zoom (`cluster: true` on a MapLibre GeoJSON source
    over `gold.practice_location`).
-3. Export the QA notebook's numbered findings into `docs/findings.md` so CLAUDE.md's references
-   to §1–§10 resolve.
+3. Export the QA notebook's numbered findings into `docs/findings.md` so the §1–§10 references
+   resolve.
 4. A short QA summary written by the build (row counts per release / level / state, number of
    `minimum` rows, breaks) next to the Parquet, so a re-run can be eyeballed without opening it.
 

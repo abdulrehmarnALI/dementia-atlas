@@ -16,7 +16,7 @@ is a skimmable log, not a transcript._
 
 ### 2026-09-15 — Docs scaffold created
 
-- Added CLAUDE.md, NOW.md and WORKLOG.md to give Claude Code stable context and a small-batch
+- Added NOW.md and WORKLOG.md to give the build a stable working context and a small-batch
   working rhythm for the silver-layer build.
 - Seeded NOW.md's "Up next" queue from the EDA findings doc (org/measure crosswalks, value schema,
   derived-row handling, aggregate validation).
@@ -32,7 +32,7 @@ is a skimmable log, not a transcript._
 - Touched: new `src/org_crosswalk.py`, new `tests/test_org_crosswalk.py` (14 tests, all pass;
   re-derive the claims from the raw June 2026 CSVs with plain pandas), pytest added to root
   requirements.txt. All evidence traced to notebooks/03_cross_release_qa.ipynb section 8.
-- Found: `tests/test_eda_claims.py` referenced by CLAUDE.md doesn't exist (tests/ was empty -
+- Found: `tests/test_eda_claims.py` referenced by the pipeline guide doesn't exist (tests/ was empty -
   this session's test file establishes the pattern instead), and docs/findings.md has no
   numbered sections - noted both in NOW.md. Also parked "is U2G6B the recoded D4U1Y?" under
   Needs a decision.
@@ -95,7 +95,7 @@ is a skimmable log, not a transcript._
 - Q1: measured computed-vs-published error per measure per level, both Era-A releases ->
   docs/aggregation_error_era_a.md (+csv). Error does NOT track suppression; it grows ~sqrt(n)
   with the number of Sub-ICBs summed and is largest relatively for INCIDENCE. No rule chosen.
-- Moved context.md to docs/context.md (where CLAUDE.md already pointed); added the decisions.
+- Moved context.md to docs/context.md (where the pipeline guide already pointed); added the decisions.
 - Built src/mapping_loader.py (dimension table, NULL sentinel -> unmapped flag, names
   stripped) and loaded the Era-B practice file into silver (42,616 rows, age decoded from the
   breakdown name, comparability era_b_only). 81 tests pass. Committed, not pushed.

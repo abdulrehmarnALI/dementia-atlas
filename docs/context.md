@@ -1,9 +1,7 @@
 # Dementia Atlas — Project Context
 
-_Background and scope. Tool-agnostic on purpose — this is the file to read (or paste into) any
-assistant, Claude Code or otherwise, to get up to speed on what this project is and why it's built
-the way it is. Working rules for Claude Code live in `pipeline/CLAUDE.md`; current task state lives
-in `pipeline/NOW.md` and `pipeline/WORKLOG.md`._
+_Background and scope — the file to read to get up to speed on what this project is and why it's
+built the way it is. Current task state lives in `pipeline/NOW.md` and `pipeline/WORKLOG.md`._
 
 ---
 
@@ -201,7 +199,7 @@ Carried from findings §10 — these are genuinely unresolved, not homework some
 
 ## Add to this file when...
 
-- A decision gets made in conversation — here, in Claude Code, in ChatGPT, anywhere — that would
-  change how someone picks this repo up cold.
+- A decision gets made in conversation, anywhere, that would change how someone picks this repo
+  up cold.
 - The *reasoning* behind a choice would otherwise only survive in a chat transcript.
 - Not for task state. That's `pipeline/NOW.md` and `pipeline/WORKLOG.md`.

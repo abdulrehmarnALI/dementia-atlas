@@ -9,7 +9,7 @@ No dates — WORKLOG.md has those. Tick things off here as they land._
 - [x] Explored the March 2026 release — `notebooks/00_march_2026_release_exploration.ipynb`
 - [x] Wrote up first findings in plain English — `docs/findings.md`
 - [x] Cross-release QA across May 2025 / March 2026 / June 2026: two schema eras, no revisions, what needs a crosswalk — `notebooks/03_cross_release_qa.ipynb`
-- [x] Set up the working files (CLAUDE.md, NOW.md, WORKLOG.md, context.md, agent-playbook.md)
+- [x] Set up the working files (NOW.md, WORKLOG.md, context.md)
 - [x] Organisation crosswalk: `ORG_TYPE` → `org_level`, England alias, LTLA code reissue, ICB reorg keyed per Sub-ICB — `src/org_crosswalk.py`
 - [x] Measure crosswalk: Era-A `Measure` strings → Era-B `MEASURE / BREAKDOWN / AGE / GENDER / …`, plus cross-era comparability class — `src/measure_crosswalk.py`
 - [x] Silver value + metadata schema: `value_raw` / `value_num` / `value_state`, DQ flag, dates, era, dictionary version, column shape — `src/silver_schema.py`
