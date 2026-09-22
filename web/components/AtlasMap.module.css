@@ -2,3 +2,45 @@
   width: 100%;
   height: 100vh;
 }
+
+/* maplibre's popup classes are global, so :global() stops css modules renaming them.
+   scoped under .map so it only affects popups on this map */
+.map :global(.maplibregl-popup-content) {
+  color: #1a1a1a;
+  font-family: inherit;
+  padding: 8px 10px;
+}
+
+/* legend sits on top of the map, so the wrapper is the positioning context */
+.wrapper {
+  position: relative;
+}
+
+.legend {
+  position: absolute;
+  bottom: 24px;
+  left: 16px;
+  width: 220px;
+  padding: 10px 12px;
+  background: #fff;
+  color: #1a1a1a; /* same dark mode issue as the popup */
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  font-size: 13px;
+}
+
+.legendTitle {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.legendBar {
+  height: 10px;
+  border-radius: 2px;
+}
+
+.legendLabels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
