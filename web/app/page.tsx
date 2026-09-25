@@ -1,32 +1,64 @@
 import AtlasMap from "@/components/AtlasMap";
+import AtlasControls from "@/components/AtlasControls";
 import { pool } from "@/lib/db";
-import type { DiagnosisRate } from "@/types/atlas";
 
-// the page reads ?level= from the url and hands it to the map
+import type { AtlasPeriod, DiagnosisRate } from "@/types/atlas";
+
+// the page reads ?level= and ?period= from the url and uses them to build the map
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ level?: string }>;
+  searchParams: Promise<{
+    level?: string;
+    period?: string;
+  }>;
 }) {
-  const { level = "sub_icb" } = await searchParams;
-  const result = await pool.query<DiagnosisRate>(
-    `
-      select
-        org_code as code,
-        diag_rate as rate
-      from gold.diagnosis_rate
-      where period_end = $1
-        and org_level = $2
-      order by org_code;
-    `,
-    ["2026-06-30", level],
-  );
+  const params = await searchParams;
 
-  const values = result.rows;
+  const level = params.level ?? "sub_icb";
+
+  const periodsResult = await pool.query<AtlasPeriod>(`
+    SELECT
+      period,
+      period_end::text AS period_end,
+      publication_era,
+      boundary_version_nhs
+    FROM gold.period
+    ORDER BY period DESC;
+  `);
+
+  const periods = periodsResult.rows;
+
+  // use the requested period if it exists, otherwise default to the latest
+  const selectedPeriod =
+    periods.find((period) => period.period === params.period) ?? periods[0];
+
+  if (!selectedPeriod) {
+    throw new Error("No periods available");
+  }
+
+  const valuesResult = await pool.query<DiagnosisRate>(
+    `
+      SELECT
+        org_code AS code,
+        diag_rate AS rate
+      FROM gold.diagnosis_rate
+      WHERE period_end = $1
+        AND org_level = $2
+      ORDER BY org_code;
+    `,
+    [selectedPeriod.period_end, level],
+  );
 
   return (
     <main>
-      <AtlasMap level={level} values={values} />
+      <AtlasControls periods={periods} selectedPeriod={selectedPeriod.period} />
+      <AtlasMap
+        level={level}
+        values={valuesResult.rows}
+        // keeps the map boundaries matched to the period being viewed
+        boundaryVintage={selectedPeriod.boundary_version_nhs}
+      />
     </main>
   );
 }

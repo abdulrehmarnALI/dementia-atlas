@@ -14,7 +14,11 @@ import type { AtlasMapProps } from "@/types/atlas";
 const COLOURS = ["#ffffcc", "#41b6c4", "#253494"];
 
 // called AtlasMap not Map so it doesn't clash with the built in JS Map
-export default function AtlasMap({ level, values }: AtlasMapProps) {
+export default function AtlasMap({
+  level,
+  values,
+  boundaryVintage,
+}: AtlasMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [range, setRange] = useState<{ min: number; max: number } | null>(null);
@@ -35,7 +39,7 @@ export default function AtlasMap({ level, values }: AtlasMapProps) {
 
     map.on("load", async () => {
       try {
-        const res = await fetch(`/api/geometry/${level}/2026-04`);
+        const res = await fetch(`/api/geometry/${level}/${boundaryVintage}`);
         if (!res.ok) {
           // fetch doesn't throw on 400/500
           console.error(`map data failed: ${res.status}`);
