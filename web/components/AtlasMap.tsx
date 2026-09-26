@@ -20,6 +20,10 @@ export default function AtlasMap({
   boundaryVintage,
 }: AtlasMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // allows the instance of the map to be safely parked in a ref so it can be accessed later without re-rendering the component
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  // persist geometry data so it can be accessed later without re-fetching
+  const geometryRef = useRef<FeatureCollection | null>(null);
 
   const [range, setRange] = useState<{ min: number; max: number } | null>(null);
 
@@ -37,6 +41,9 @@ export default function AtlasMap({
       zoom: 5.5,
     });
 
+    // store the map instance in the ref so it can be accessed later without causing a re-render
+    mapRef.current = map;
+
     map.on("load", async () => {
       try {
         const res = await fetch(`/api/geometry/${level}/${boundaryVintage}`);
@@ -46,35 +53,9 @@ export default function AtlasMap({
           return;
         }
         const geometry: FeatureCollection = await res.json();
+        geometryRef.current = geometry;
 
-        // This makes looking up the rate for each polygon cheap.
-        const rateByCode: Record<string, number> = Object.fromEntries(
-          values.map(({ code, rate }) => [code, rate]),
-        );
-
-        const geojson: FeatureCollection = {
-          ...geometry,
-          features: geometry.features.map((f) => {
-            const code = f.properties?.code as string | undefined;
-            return {
-              ...f,
-              properties: {
-                ...f.properties,
-                rate: code ? (rateByCode[code] ?? null) : null,
-              },
-            };
-          }),
-        };
-
-        // Colour scale from the data itself, not hard-coded
-        const rates = values.map(({ rate }) => rate);
-
-        const min = Math.min(...rates);
-        const max = Math.max(...rates);
-        const midPoint = (min + max) / 2;
-        setRange({ min, max });
-
-        map.addSource("areas", { type: "geojson", data: geojson });
+        map.addSource("areas", { type: "geojson", data: geometry });
 
         // Put layers underneath the basemap's place labels, so town names stay readable
         const firstLabelId = map
@@ -87,22 +68,7 @@ export default function AtlasMap({
             type: "fill",
             source: "areas",
             paint: {
-              "fill-color": [
-                "case",
-                ["==", ["get", "rate"], null],
-                "#d1d5db",
-                [
-                  "interpolate",
-                  ["linear"],
-                  ["get", "rate"],
-                  min,
-                  COLOURS[0],
-                  midPoint,
-                  COLOURS[1],
-                  max,
-                  COLOURS[2],
-                ],
-              ],
+              "fill-color": "#d1d333",
               "fill-opacity": 0.8,
             },
           },
@@ -151,8 +117,69 @@ export default function AtlasMap({
     });
 
     // react mounts things twice in dev, without this we end up with two maps
-    return () => map.remove();
-  }, [level, values]); // re-run effect if the level changes
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, [level, boundaryVintage]); // rebuild when the map level/geography or boundary vintage changes
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const geometry = geometryRef.current;
+
+    if (!map || !geometry) return;
+
+    // This makes looking up the rate for each polygon cheap.
+    const rateByCode: Record<string, number> = Object.fromEntries(
+      values.map(({ code, rate }) => [code, rate]),
+    );
+
+    const geojson: FeatureCollection = {
+      ...geometry,
+      features: geometry.features.map((f) => {
+        const code = f.properties?.code as string | undefined;
+        return {
+          ...f,
+          properties: {
+            ...f.properties,
+            rate: code ? (rateByCode[code] ?? null) : null,
+          },
+        };
+      }),
+    };
+
+    const source = map.getSource("areas") as
+      | maplibregl.GeoJSONSource
+      | undefined;
+    if (source?.type === "geojson") {
+      source.setData(geojson);
+    }
+
+    // Colour scale from the data itself, not hard-coded
+    const rates = values.map(({ rate }) => rate);
+
+    const min = Math.min(...rates);
+    const max = Math.max(...rates);
+    const midPoint = (min + max) / 2;
+    setRange({ min, max });
+
+    map.setPaintProperty("areas-fill", "fill-color", [
+      "case",
+      ["==", ["get", "rate"], null],
+      "#d1d5db",
+      [
+        "interpolate",
+        ["linear"],
+        ["get", "rate"],
+        min,
+        COLOURS[0],
+        midPoint,
+        COLOURS[1],
+        max,
+        COLOURS[2],
+      ],
+    ]);
+  }, [values]);
 
   return (
     <div className={styles.wrapper}>
