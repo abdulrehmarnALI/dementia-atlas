@@ -24,6 +24,9 @@ export default function AtlasMap({
   // Imperative MapLibre object — changing this should not cause a React render
   const mapRef = useRef<maplibregl.Map | null>(null);
 
+  // Track the currently hovered feature so we can reset its state when another feature is hovered
+  const hoveredFeatureId = useRef<string | number | null>(null);
+
   // Geometry is state because when new boundaries arrive, other React logic needs to react and synchronise those boundaries with MapLibre
   const [boundaryGeoJSON, setBoundaryGeoJSON] =
     useState<FeatureCollection | null>(null);
@@ -38,6 +41,8 @@ export default function AtlasMap({
           max: Math.max(...rates),
         }
       : null;
+
+  const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
   // ------------------------------------------------------------
   // 1. MAP LIFECYCLE
@@ -153,6 +158,7 @@ export default function AtlasMap({
       atlasMap.addSource("areas", {
         type: "geojson",
         data: mapGeoJSON,
+        generateId: true,
       });
     }
 
@@ -185,7 +191,12 @@ export default function AtlasMap({
           source: "areas",
           paint: {
             "line-color": "#ffffff",
-            "line-width": 0.5,
+            "line-width": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              1.5,
+              0,
+            ],
           },
         },
         firstLabelId,
@@ -231,7 +242,7 @@ export default function AtlasMap({
 
   // ------------------------------------------------------------
   // 4. MAP INTERACTION
-  // Add hover behaviour once the atlas layers exist.
+  // Add hover and click behaviour once the atlas layers exist.
   // ------------------------------------------------------------
   useEffect(() => {
     const atlasMap = mapRef.current;
@@ -240,7 +251,6 @@ export default function AtlasMap({
     const setupInteractions = () => {
       if (!atlasMap.getLayer("areas-fill")) return;
 
-      // One popup is reused on every mouse move rather than creating a new popup each time
       const popup = new maplibregl.Popup({
         closeButton: false,
         closeOnClick: false,
@@ -252,8 +262,36 @@ export default function AtlasMap({
 
         const name = feature.properties?.name as string;
         const rate = feature.properties?.rate as number | null;
+        const featureId = feature.id;
 
         atlasMap.getCanvas().style.cursor = "pointer";
+
+        // Remove hover state from the previously hovered feature
+        if (
+          hoveredFeatureId.current !== null &&
+          hoveredFeatureId.current !== featureId
+        ) {
+          atlasMap.setFeatureState(
+            {
+              source: "areas",
+              id: hoveredFeatureId.current,
+            },
+            { hover: false },
+          );
+        }
+
+        // Apply hover state to the current feature
+        if (featureId !== undefined) {
+          atlasMap.setFeatureState(
+            {
+              source: "areas",
+              id: featureId,
+            },
+            { hover: true },
+          );
+
+          hoveredFeatureId.current = featureId;
+        }
 
         popup
           .setLngLat(event.lngLat)
@@ -267,23 +305,47 @@ export default function AtlasMap({
 
       const handleMouseLeave = () => {
         atlasMap.getCanvas().style.cursor = "";
+
+        if (hoveredFeatureId.current !== null) {
+          atlasMap.setFeatureState(
+            {
+              source: "areas",
+              id: hoveredFeatureId.current,
+            },
+            { hover: false },
+          );
+
+          hoveredFeatureId.current = null;
+        }
+
         popup.remove();
       };
 
-      atlasMap.on("mousemove", "areas-fill", handleMouseMove);
+      const handleClick = (event: maplibregl.MapLayerMouseEvent) => {
+        const feature = event.features?.[0];
+        if (!feature) return;
 
+        const code = feature.properties?.code as string | undefined;
+        if (typeof code !== "string") return;
+
+        // Clicking the selected area again deselects it.
+        setSelectedCode((current) => (current === code ? null : code));
+      };
+
+      atlasMap.on("click", "areas-fill", handleClick);
+      atlasMap.on("mousemove", "areas-fill", handleMouseMove);
       atlasMap.on("mouseleave", "areas-fill", handleMouseLeave);
 
       return () => {
+        atlasMap.off("click", "areas-fill", handleClick);
         atlasMap.off("mousemove", "areas-fill", handleMouseMove);
-
         atlasMap.off("mouseleave", "areas-fill", handleMouseLeave);
 
         popup.remove();
       };
     };
 
-    // The interaction effect can run before the asynchronous geometry request has created the atlas layers so wait until they exist
+    // The interaction effect may run before the asynchronous geometry request has created the atlas layers
     if (atlasMap.getLayer("areas-fill")) {
       return setupInteractions();
     }
@@ -308,6 +370,30 @@ export default function AtlasMap({
       interactionCleanup?.();
     };
   }, []);
+
+  useEffect(() => {
+    const atlasMap = mapRef.current;
+    if (!atlasMap) return;
+
+    const lineWidth: maplibregl.ExpressionSpecification = [
+      "case",
+
+      // Selected
+      ["==", ["get", "code"], selectedCode ?? "___NO_CODE___"],
+      3,
+
+      // Hovered
+      ["boolean", ["feature-state", "hover"], false],
+      1,
+
+      // Normal
+      0,
+    ];
+
+    if (atlasMap.getLayer("areas-line")) {
+      atlasMap.setPaintProperty("areas-line", "line-width", lineWidth);
+    }
+  }, [selectedCode]);
 
   return (
     <div className={styles.wrapper}>
