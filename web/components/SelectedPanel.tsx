@@ -1,10 +1,15 @@
-import type { AreaSnapshot } from "@/types/atlas";
+import type { AreaSnapshot, EnglandBenchmark } from "@/types/atlas";
 
 interface SelectedAreaPanelProps {
   area: AreaSnapshot | null;
+  england: EnglandBenchmark | null;
 }
 
-export default function SelectedAreaPanel({ area }: SelectedAreaPanelProps) {
+export default function SelectedAreaPanel({
+  area,
+  england,
+}: SelectedAreaPanelProps) {
+  const difference = area && england ? area.rate - england.rate : null;
   return (
     <aside>
       {!area ? (
@@ -19,6 +24,24 @@ export default function SelectedAreaPanel({ area }: SelectedAreaPanelProps) {
 
           <strong>{area.rate.toFixed(1)}%</strong>
           <p>Estimated dementia diagnosis rate</p>
+
+          {england && (
+            <dl>
+              <div>
+                <dt>England</dt>
+                <dd>{england.rate.toFixed(1)}%</dd>
+              </div>
+
+              <div>
+                <dt>Difference</dt>
+                <dd>
+                  {difference !== null
+                    ? `${difference > 0 ? "+" : ""}${difference.toFixed(1)} pp`
+                    : "Unavailable"}
+                </dd>
+              </div>
+            </dl>
+          )}
 
           {area.rateLower != null && area.rateUpper != null && (
             <p>

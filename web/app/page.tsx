@@ -1,7 +1,11 @@
 import AtlasControls from "@/components/AtlasControls";
 import { pool } from "@/lib/db";
 
-import type { AreaSnapshot, AtlasPeriod } from "@/types/atlas";
+import type {
+  AreaSnapshot,
+  AtlasPeriod,
+  EnglandBenchmark,
+} from "@/types/atlas";
 import AtlasExplorer from "@/components/AtlasExplorer";
 
 // the page reads ?level= and ?period= from the url and uses them to build the map
@@ -59,12 +63,30 @@ export default async function Home({
     [selectedPeriod.period_end, level],
   );
 
+  const englandResult = await pool.query<EnglandBenchmark>(
+    `
+    SELECT
+      diag_rate AS rate,
+      diag_rate_ll AS "rateLower",
+      diag_rate_ul AS "rateUpper"
+    FROM gold.diagnosis_rate
+    WHERE period_end = $1
+      AND org_level = 'country'
+      AND org_code = 'ENG'
+    LIMIT 1;
+  `,
+    [selectedPeriod.period_end],
+  );
+
+  const england = englandResult.rows[0] ?? null;
+
   return (
     <main>
       <AtlasControls periods={periods} selectedPeriod={selectedPeriod.period} />
       <AtlasExplorer
         level={level}
         areas={valuesResult.rows}
+        england={england}
         boundaryVintage={selectedPeriod.boundary_version_nhs}
       />
     </main>

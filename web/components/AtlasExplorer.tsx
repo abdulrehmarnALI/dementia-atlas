@@ -2,13 +2,18 @@
 
 import AtlasMap from "./AtlasMap";
 import { useState } from "react";
-import type { AreaSnapshot, DiagnosisRate } from "@/types/atlas";
+import type {
+  AreaSnapshot,
+  DiagnosisRate,
+  EnglandBenchmark,
+} from "@/types/atlas";
 import SelectedAreaPanel from "./SelectedPanel";
 import styles from "./AtlasExplorer.module.css";
 
 interface AtlasExplorerProps {
   level: string;
   areas: AreaSnapshot[];
+  england: EnglandBenchmark | null;
   boundaryVintage: string;
 }
 
@@ -16,6 +21,7 @@ export default function AtlasExplorer({
   level,
   areas,
   boundaryVintage,
+  england,
 }: AtlasExplorerProps) {
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
@@ -41,7 +47,7 @@ export default function AtlasExplorer({
         />
       </div>
 
-      <SelectedAreaPanel area={selectedArea} />
+      <SelectedAreaPanel area={selectedArea} england={england} />
     </div>
   );
 }

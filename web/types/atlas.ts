@@ -15,6 +15,12 @@ export type AreaSnapshot = {
   dqFlag: boolean;
 };
 
+export type EnglandBenchmark = {
+  rate: number;
+  rateLower: number | null;
+  rateUpper: number | null;
+};
+
 export type AtlasPeriod = {
   period: string;
   period_end: string;
