@@ -1,16 +1,38 @@
 .explorer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 1rem;
-  width: 100%;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+
+  flex: 1;
+  min-height: 0;
+
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .mapArea {
   min-width: 0;
+  min-height: 0;
+}
+
+.panelArea {
+  min-width: 0;
+  overflow-y: auto;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 @media (max-width: 900px) {
   .explorer {
     grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .mapArea {
+    height: 60vh;
+    min-height: 420px;
+  }
+
+  .panelArea {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
   }
 }

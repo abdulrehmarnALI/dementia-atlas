@@ -1,4 +1,5 @@
 import type { AreaSnapshot, EnglandBenchmark } from "@/types/atlas";
+import styles from "./SelectedAreaPanel.module.css";
 
 interface SelectedAreaPanelProps {
   area: AreaSnapshot | null;
@@ -11,11 +12,16 @@ export default function SelectedAreaPanel({
 }: SelectedAreaPanelProps) {
   const difference = area && england ? area.rate - england.rate : null;
   return (
-    <aside>
+    <aside className={styles.panel}>
       {!area ? (
         <>
-          <h2>Explore an area</h2>
-          <p>Select an area on the map to view its dementia data.</p>
+          <div className={styles.projectNotice}>
+            <strong>Independent project · Work in progress</strong>
+            <p>
+              Uses publicly available health data. Not affiliated with or
+              endorsed by NHS England or UK DRI.
+            </p>
+          </div>
         </>
       ) : (
         <>

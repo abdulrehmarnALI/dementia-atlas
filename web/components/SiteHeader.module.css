@@ -1,0 +1,27 @@
+.header {
+  min-height: 56px;
+  padding: 0 24px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.identity {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.identity span {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+.nav {
+  display: flex;
+  gap: 20px;
+  font-size: 0.875rem;
+}

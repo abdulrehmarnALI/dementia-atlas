@@ -1,14 +1,16 @@
+import styles from "./SiteHeader.module.css";
+
 export default function SiteHeader() {
   return (
-    <header>
-      <div>
+    <header className={styles.header}>
+      <div className={styles.identity}>
         <strong>Dementia Atlas</strong>
         <span>England</span>
       </div>
 
-      <nav aria-label="Main navigation">
-        <a href="#methodology">Methodology</a>
-        <a href="#about">About</a>
+      <nav className={styles.nav} aria-label="Main navigation">
+        <span>Methodology</span>
+        <span>About</span>
       </nav>
     </header>
   );

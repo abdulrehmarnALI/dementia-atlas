@@ -1,0 +1,14 @@
+.panel {
+  height: 100%;
+  padding: 24px;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.projectNotice {
+  margin-top: auto;
+  padding-top: 24px;
+  font-size: 0.75rem;
+  opacity: 0.65;
+}

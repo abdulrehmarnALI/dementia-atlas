@@ -1,5 +1,6 @@
 import AtlasControls from "@/components/AtlasControls";
 import { pool } from "@/lib/db";
+import styles from "./page.module.css";
 
 import type {
   AreaSnapshot,
@@ -83,21 +84,24 @@ export default async function Home({
   const england = englandResult.rows[0] ?? null;
 
   return (
-    <>
+    <div className={styles.page}>
       <SiteHeader />
-      <main>
-        <section>
-          <p>Dementia data across England</p>
+
+      <main className={styles.main}>
+        <section className={styles.intro}>
+          <p className={styles.eyebrow}>Dementia data across England</p>
           <h1>Explore dementia diagnosis across England</h1>
           <p>
             Explore geographic variation and change over time using publicly
             available dementia data.
           </p>
         </section>
+
         <AtlasControls
           periods={periods}
           selectedPeriod={selectedPeriod.period}
         />
+
         <AtlasExplorer
           level={level}
           areas={valuesResult.rows}
@@ -105,7 +109,8 @@ export default async function Home({
           boundaryVintage={selectedPeriod.boundary_version_nhs}
         />
       </main>
+
       <SiteFooter />
-    </>
+    </div>
   );
 }

@@ -46,8 +46,9 @@ export default function AtlasExplorer({
           onSelectArea={setSelectedCode}
         />
       </div>
-
-      <SelectedAreaPanel area={selectedArea} england={england} />
+      <div className={styles.panelArea}>
+        <SelectedAreaPanel area={selectedArea} england={england} />
+      </div>
     </div>
   );
 }
