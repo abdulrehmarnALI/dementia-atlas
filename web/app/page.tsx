@@ -1,15 +1,15 @@
-import AtlasMap from "@/components/AtlasMap";
 import AtlasControls from "@/components/AtlasControls";
 import { pool } from "@/lib/db";
 
 import type { AtlasPeriod, DiagnosisRate } from "@/types/atlas";
+import AtlasExplorer from "@/components/AtlasExplorer";
 
 // the page reads ?level= and ?period= from the url and uses them to build the map
 export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<{
-    level?: string;
+    level: string;
     period?: string;
   }>;
 }) {
@@ -49,14 +49,12 @@ export default async function Home({
     `,
     [selectedPeriod.period_end, level],
   );
-
   return (
     <main>
       <AtlasControls periods={periods} selectedPeriod={selectedPeriod.period} />
-      <AtlasMap
+      <AtlasExplorer
         level={level}
         values={valuesResult.rows}
-        // keeps the map boundaries matched to the period being viewed
         boundaryVintage={selectedPeriod.boundary_version_nhs}
       />
     </main>

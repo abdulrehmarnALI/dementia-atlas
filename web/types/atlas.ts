@@ -14,4 +14,6 @@ export type AtlasMapProps = {
   level: string;
   values: DiagnosisRate[];
   boundaryVintage: string;
+  selectedCode: string | null;
+  onSelectArea: (code: string | null) => void;
 };

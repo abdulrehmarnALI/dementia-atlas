@@ -17,6 +17,8 @@ export default function AtlasMap({
   level,
   values,
   boundaryVintage,
+  selectedCode,
+  onSelectArea,
 }: AtlasMapProps) {
   // The real <div> MapLibre will draw into.
   const containerRef = useRef<HTMLDivElement>(null);
@@ -41,8 +43,6 @@ export default function AtlasMap({
           max: Math.max(...rates),
         }
       : null;
-
-  const [selectedCode, setSelectedCode] = useState<string | null>(null);
 
   // ------------------------------------------------------------
   // 1. MAP LIFECYCLE
@@ -329,7 +329,7 @@ export default function AtlasMap({
         if (typeof code !== "string") return;
 
         // Clicking the selected area again deselects it.
-        setSelectedCode((current) => (current === code ? null : code));
+        onSelectArea(selectedCode === code ? null : code);
       };
 
       atlasMap.on("click", "areas-fill", handleClick);
@@ -369,7 +369,7 @@ export default function AtlasMap({
       cleanupSourceListener();
       interactionCleanup?.();
     };
-  }, []);
+  }, [selectedCode, onSelectArea]);
 
   useEffect(() => {
     const atlasMap = mapRef.current;
