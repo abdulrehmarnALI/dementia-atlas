@@ -7,6 +7,8 @@ import type {
   EnglandBenchmark,
 } from "@/types/atlas";
 import AtlasExplorer from "@/components/AtlasExplorer";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 // the page reads ?level= and ?period= from the url and uses them to build the map
 export default async function Home({
@@ -81,14 +83,29 @@ export default async function Home({
   const england = englandResult.rows[0] ?? null;
 
   return (
-    <main>
-      <AtlasControls periods={periods} selectedPeriod={selectedPeriod.period} />
-      <AtlasExplorer
-        level={level}
-        areas={valuesResult.rows}
-        england={england}
-        boundaryVintage={selectedPeriod.boundary_version_nhs}
-      />
-    </main>
+    <>
+      <SiteHeader />
+      <main>
+        <section>
+          <p>Dementia data across England</p>
+          <h1>Explore dementia diagnosis across England</h1>
+          <p>
+            Explore geographic variation and change over time using publicly
+            available dementia data.
+          </p>
+        </section>
+        <AtlasControls
+          periods={periods}
+          selectedPeriod={selectedPeriod.period}
+        />
+        <AtlasExplorer
+          level={level}
+          areas={valuesResult.rows}
+          england={england}
+          boundaryVintage={selectedPeriod.boundary_version_nhs}
+        />
+      </main>
+      <SiteFooter />
+    </>
   );
 }
