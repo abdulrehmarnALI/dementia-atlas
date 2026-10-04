@@ -6,6 +6,22 @@
   flex-direction: column;
 }
 
+.panel h2 {
+  margin: 4px 0 16px;
+  line-height: 1.15;
+}
+
+.panel dl {
+  margin-top: 24px;
+}
+
+.panel dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+}
+
 .projectNotice {
   margin-top: auto;
   padding-top: 24px;
