@@ -3,6 +3,18 @@ export type DiagnosisRate = {
   rate: number;
 };
 
+export type AreaSnapshot = {
+  code: string;
+  name: string;
+  rate: number;
+  rateLower: number | null;
+  rateUpper: number | null;
+  recorded65Plus: number | null;
+  estimated65Plus: number | null;
+  // dq flag representing data quality reliability/concerns
+  dqFlag: boolean;
+};
+
 export type AtlasPeriod = {
   period: string;
   period_end: string;

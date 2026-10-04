@@ -1,0 +1,16 @@
+.explorer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 1rem;
+  width: 100%;
+}
+
+.mapArea {
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .explorer {
+    grid-template-columns: 1fr;
+  }
+}
