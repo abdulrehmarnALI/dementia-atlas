@@ -1,12 +1,12 @@
 .header {
   min-height: 56px;
   padding: 0 24px;
-
+  background: var(--colour-background);
+  color: var(--colour-text);
+  border-bottom: 4px solid var(--colour-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .identity {

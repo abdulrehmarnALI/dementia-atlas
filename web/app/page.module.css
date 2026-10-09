@@ -9,13 +9,15 @@
   flex: 1;
   min-height: 0;
   min-width: 0;
-
+  /* border: 1px solid purple; */
   display: flex;
   flex-direction: column;
 }
 
 .intro {
-  padding: 20px 24px 16px;
+  padding: var(--space-6);
+  background: var(--colour-surface);
+  color: var(--colour-text);
 }
 
 .intro h1 {

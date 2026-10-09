@@ -6,12 +6,13 @@ import type {
   AreaSnapshot,
   DiagnosisRate,
   EnglandBenchmark,
+  GeographyLevel,
 } from "@/types/atlas";
-import SelectedAreaPanel from "./SelectedPanel";
+import SelectedAreaPanel from "./SelectedAreaPanel";
 import styles from "./AtlasExplorer.module.css";
 
 interface AtlasExplorerProps {
-  level: string;
+  level: GeographyLevel;
   areas: AreaSnapshot[];
   england: EnglandBenchmark | null;
   boundaryVintage: string;
@@ -47,7 +48,11 @@ export default function AtlasExplorer({
         />
       </div>
       <div className={styles.panelArea}>
-        <SelectedAreaPanel area={selectedArea} england={england} />
+        <SelectedAreaPanel
+          level={level}
+          area={selectedArea}
+          england={england}
+        />
       </div>
     </div>
   );

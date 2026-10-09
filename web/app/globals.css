@@ -1,12 +1,167 @@
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* cream / yellow */
+  --da-cream-0: #fdfef6;
+  --da-cream-50: #f9fbe7;
+  --da-cream-100: #f0f4c3;
+  --da-yellow-100: #ffffcc;
+
+  /* green / teal / cyan */
+  --da-green-200: #c5e1a5;
+  --da-green-700: #558b2f;
+  --da-teal-200: #80cbc4;
+  --da-cyan-500: #41b6c4;
+
+  /* blue / navy / indigo */
+  --da-blue-500: #1d91c0;
+  --da-blue-700: #225ea8;
+  --da-navy-900: #0c2c84;
+  --da-indigo-100: #e8eaf6;
+  --da-indigo-200: #9fa8da;
+  --da-indigo-400: #5c6bc0;
+  --da-indigo-700: #303f9f;
+
+  /* neutrals */
+  --da-brown-400: #8d6e63;
+  --da-brown-700: #5d4037;
+  --da-brown-900: #3e2723;
+  --da-grey-400: #9e9e9e;
+  --da-slate-950: #121620;
+  --da-slate-900: #1a202c;
+  --da-slate-800: #232a3b;
+  --da-slate-700: #2d364d;
+
+  /* warm: amber / orange / red / maroon */
+  --da-amber-100: #fff3e0;
+  --da-amber-700: #e65100;
+  --da-orange-100: #ffe0b2;
+  --da-orange-300: #ffb74d;
+  --da-orange-400: #ff8a65;
+  --da-orange-600: #f4511e;
+  --da-red-100: #ffebee;
+  --da-red-800: #c62828;
+  --da-maroon-700: #8e1b1b;
+  --da-maroon-900: #5a0f0f;
+
+  --colour-background: var(--da-cream-50);
+  --colour-surface: var(--da-cream-0);
+  --colour-surface-weak: var(--da-cream-100);
+  --colour-border: var(--da-cream-100);
+  --colour-border-strong: var(--da-brown-400);
+
+  --colour-text: var(--da-brown-900);
+  --colour-text-weak: var(--da-brown-700);
+  --colour-text-on-accent: var(--da-cream-0);
+
+  --colour-accent: var(--da-indigo-700);
+  --colour-accent-weak: var(--da-indigo-100);
+
+  --colour-success: var(--da-green-700);
+  --colour-success-weak: var(--da-green-200);
+  --colour-warning: var(--da-amber-700);
+  --colour-warning-weak: var(--da-amber-100);
+  --colour-danger: var(--da-red-800);
+  --colour-danger-weak: var(--da-red-100);
+  --colour-info: var(--da-indigo-200);
+  --colour-neutral: var(--da-brown-400);
+
+  --colour-scale-1: var(--da-cream-50);
+  --colour-scale-2: var(--da-cream-100);
+  --colour-scale-3: var(--da-green-200);
+  --colour-scale-4: var(--da-teal-200);
+  --colour-scale-5: var(--da-cyan-500);
+  --colour-scale-6: var(--da-blue-500);
+  --colour-scale-7: var(--da-blue-700);
+  --colour-scale-8: var(--da-navy-900);
+  --colour-scale-no-data: var(--da-brown-400);
+
+  [data-map-theme="warm"] {
+    --colour-scale-1: var(--da-amber-100);
+    --colour-scale-2: var(--da-orange-100);
+    --colour-scale-3: var(--da-orange-300);
+    --colour-scale-4: var(--da-orange-400);
+    --colour-scale-5: var(--da-orange-600);
+    --colour-scale-6: var(--da-red-800);
+    --colour-scale-7: var(--da-maroon-700);
+    --colour-scale-8: var(--da-maroon-900);
+    --colour-scale-no-data: var(--da-grey-400);
+  }
+
+  /* spacing (4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+
+  /* radius */
+  --radius-sm: 4px; /* inputs, badges */
+  --radius-md: 8px; /* cards, buttons */
+  --radius-lg: 16px; /* panels, modals */
+  --radius-full: 9999px; /* pills, avatars */
+
+  /* border width */
+  --border-width: 1px;
+  --border-width-strong: 2px;
+
+  --font-size-xs: 0.75rem; /* 12: captions, legend labels */
+  --font-size-sm: 0.875rem; /* 14: secondary UI */
+  --font-size-md: 1rem; /* 16: body */
+  --font-size-lg: 1.25rem; /* 20: section titles */
+  --font-size-xl: 1.5rem; /* 24: page titles */
+  --font-size-2xl: 2rem; /* 32: big stat numbers */
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.5;
+
+  /* elevation (tinted with brown-900 so shadows feel warm, not grey) */
+  --shadow-sm: 0 1px 2px rgb(62 39 35 / 0.08);
+  --shadow-md: 0 4px 12px rgb(62 39 35 / 0.12);
+
+  /* focus */
+  --focus-ring: 0 0 0 2px var(--colour-surface), 0 0 0 4px var(--colour-accent);
+
+  /* motion */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --easing: cubic-bezier(0.2, 0, 0, 1);
+
+  /* layering */
+  --z-dropdown: 10;
+  --z-modal: 100;
+  --z-toast: 200;
+
+  /* layout */
+  --content-max-width: 72rem;
+  --sidebar-width: 24rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --colour-background: var(--da-slate-950);
+    --colour-surface: var(--da-slate-900);
+    --colour-surface-weak: var(--da-slate-800);
+
+    --colour-border: var(--da-slate-800);
+    --colour-border-strong: var(--da-slate-700);
+
+    --colour-text: var(--da-cream-0);
+    --colour-text-weak: var(--da-indigo-100);
+    --colour-text-on-accent: var(--da-slate-950);
+
+    --colour-accent-weak: var(--da-slate-900);
+    --colour-neutral: var(--da-grey-400);
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+    --shadow-md: 0 4px 12px rgb(0 0 0 / 0.6);
+
+    --background: var(--colour-background);
+    --foreground: var(--colour-text);
   }
 }
 
@@ -16,27 +171,64 @@ html {
 
 html,
 body {
+  min-height: 100%;
   margin: 0;
-  max-height: 100%;
-  max-width: 100vw;
-  overflow-x: hidden;
 }
 
 body {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--colour-background);
+  color: var(--colour-text);
+
+  /* TYPOGRAPHY */
+  font-family: var(--font-sans);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* TYPOGRAPHY OVERRIDES FOR ATLAS COMPONENTS */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-sans);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  color: var(--colour-text);
+}
+
+/* Apply JetBrains Mono cleanly to coordinates, metrics, numbers, and scales */
+.map-coordinate,
+.metric-value,
+.legend-label,
+.data-table-cell {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums; /* Prevents text jittering on data updates */
 }
 
 * {
   box-sizing: border-box;
   padding: 0;
   margin: 0;
+  /* border: 1px solid red; */
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--colour-accent);
+  outline-offset: 2px;
 }
 
 a {
@@ -45,7 +237,9 @@ a {
 }
 
 @media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
+  :root {
+    --colour-accent: var(--da-indigo-200);
+    --colour-accent-weak: var(--da-slate-800);
+    --colour-text-on-accent: var(--da-slate-950);
   }
 }

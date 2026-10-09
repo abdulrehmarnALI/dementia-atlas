@@ -6,6 +6,7 @@ import type {
   AreaSnapshot,
   AtlasPeriod,
   EnglandBenchmark,
+  GeographyLevel,
 } from "@/types/atlas";
 import AtlasExplorer from "@/components/AtlasExplorer";
 import SiteHeader from "@/components/SiteHeader";
@@ -16,13 +17,13 @@ export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<{
-    level: string;
+    level?: string;
     period?: string;
   }>;
 }) {
   const params = await searchParams;
 
-  const level = params.level ?? "sub_icb";
+  const level: GeographyLevel = params.level === "icb" ? "icb" : "sub_icb";
 
   const periodsResult = await pool.query<AtlasPeriod>(`
     SELECT

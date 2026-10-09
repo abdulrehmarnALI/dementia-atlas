@@ -35,3 +35,11 @@ export type AtlasMapProps = {
   selectedCode: string | null;
   onSelectArea: (code: string | null) => void;
 };
+
+export type GeographyLevel =
+  | "sub_icb"
+  | "icb"
+  | "nhs_region"
+  | "gor"
+  | "ltla"
+  | "utla";

@@ -1,30 +1,245 @@
 .panel {
   height: 100%;
-  padding: 24px;
+  padding: var(--space-6);
 
   display: flex;
   flex-direction: column;
 }
 
 .panel h2 {
-  margin: 4px 0 16px;
-  line-height: 1.15;
+  margin: var(--space-1) 0 var(--space-4);
+  line-height: var(--line-height-tight);
 }
 
 .panel dl {
-  margin-top: 24px;
+  margin-top: var(--space-6);
 }
 
 .panel dl > div {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-  padding: 8px 0;
+  align-items: baseline;
+  gap: var(--space-4);
+  padding: var(--space-2) 0;
+}
+
+.panel dt {
+  color: var(--colour-text-weak);
+}
+
+.panel dd {
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.areaCodeContainer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.areaCodeIcon {
+  width: 1.1rem;
+  height: 1.1rem;
+  stroke-width: 0.08rem;
+}
+
+.areaCodeLabel {
+  font-size: var(--font-size-sm);
+}
+
+.areaCode {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-md);
+}
+
+.areaName {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-normal);
+}
+
+.primaryMeasureContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.primaryMeasureLabel {
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+.primaryMeasureValueContainer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.primaryMeasureAgeLabel {
+  flex-shrink: 0;
+  font-size: var(--font-size-sm);
+  color: var(--colour-text-weak);
+}
+
+.rateGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-2xl);
+  line-height: 1;
+}
+
+.ratePrimary {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-2xl);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.rateUnitIcon {
+  width: 0.65em;
+  height: 0.65em;
+  flex-shrink: 0;
+  color: var(--colour-text-weak);
+  stroke-width: 2.5;
+}
+
+.ci {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-sm);
+}
+
+.ciHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+  color: var(--colour-text-weak);
+}
+
+.ciValues {
+  font-variant-numeric: tabular-nums;
+  color: var(--colour-text);
+}
+
+.ciTrack {
+  position: relative;
+  height: var(--space-2);
+  margin: var(--space-2) 0;
+  background: var(--colour-surface-weak);
+  border-radius: var(--radius-full);
+}
+
+.ciRange {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--colour-info);
+  border-radius: var(--radius-full);
+}
+
+.ciPoint,
+.ciBenchmark {
+  position: absolute;
+  top: calc(var(--space-1) * -1);
+  transform: translateX(-50%);
+}
+
+.ciPoint {
+  width: var(--space-3);
+  height: var(--space-3);
+  top: calc(var(--space-2) / 2 - var(--space-3) / 2);
+  background: var(--colour-text);
+  border: var(--border-width-strong) solid var(--colour-surface);
+  border-radius: var(--radius-full);
+}
+
+.ciBenchmark {
+  width: var(--border-width-strong);
+  height: var(--space-4);
+  background: var(--colour-warning);
+}
+
+.ciScale {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-size-xs);
+  color: var(--colour-text-weak);
+  font-variant-numeric: tabular-nums;
+}
+
+.ciLegend {
+  display: flex;
+  gap: var(--space-4);
+  list-style: none;
+  font-size: var(--font-size-xs);
+  color: var(--colour-text-weak);
+}
+
+.ciLegend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.ciKeyPoint {
+  width: var(--space-2);
+  height: var(--space-2);
+  background: var(--colour-text);
+  border-radius: var(--radius-full);
+}
+
+.ciKeyBenchmark {
+  width: var(--border-width-strong);
+  height: var(--space-3);
+  background: var(--colour-warning);
+}
+
+.emptyState {
+  max-width: 18rem;
+  margin: auto 0;
+}
+
+.emptyStateIcon {
+  width: var(--space-8);
+  height: var(--space-8);
+  margin-bottom: var(--space-3);
+  color: var(--colour-text-weak);
+}
+
+.emptyState h2 {
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-lg);
+}
+
+.emptyState p {
+  color: var(--colour-text-weak);
+  font-size: var(--font-size-sm);
 }
 
 .projectNotice {
   margin-top: auto;
-  padding-top: 24px;
-  font-size: 0.75rem;
+  padding-top: var(--space-6);
+  font-size: var(--font-size-xs);
   opacity: 0.65;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
